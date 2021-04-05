@@ -16,6 +16,8 @@ let localStream = null;
 let remoteStream = null;
 let roomDialog = null;
 let roomId = null;
+let dataChannel = null;
+let interval = null;
 
 function init() {
   document.querySelector('#cameraBtn').addEventListener('click', openUserMedia);
@@ -33,6 +35,7 @@ async function createRoom() {
 
   console.log('Create PeerConnection with configuration: ', configuration);
   peerConnection = new RTCPeerConnection(configuration);
+  sendData();
 
   registerPeerConnectionListeners();
 
@@ -127,6 +130,7 @@ async function joinRoomById(roomId) {
   if (roomSnapshot.exists) {
     console.log('Create PeerConnection with configuration: ', configuration);
     peerConnection = new RTCPeerConnection(configuration);
+    sendData();
     registerPeerConnectionListeners();
     localStream.getTracks().forEach(track => {
       peerConnection.addTrack(track, localStream);
@@ -196,6 +200,24 @@ async function openUserMedia(e) {
   document.querySelector('#joinBtn').disabled = false;
   document.querySelector('#createBtn').disabled = false;
   document.querySelector('#hangupBtn').disabled = false;
+}
+
+function sendData() {
+  dataChannel = peerConnection.createDataChannel("boo");
+  dataChannel.addEventListener('open', event => {
+    console.log("BOOOO");
+    if (interval == null) {
+      interval = setInterval(() => {
+        dataChannel.send(Math.random());
+      }, 2000);
+    }
+  });
+
+  dataChannel.addEventListener('message', event => {
+    console.log(event.data);
+    const message = event.data;
+    document.querySelector("#incomingMessages").textContent += message + '\n';
+  });
 }
 
 async function hangUp(e) {
