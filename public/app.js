@@ -12,8 +12,6 @@ const configuration = {
 };
 
 let peerConnection = null;
-let localStream = null;
-let remoteStream = null;
 let roomDialog = null;
 let roomId = null;
 let dataChannel = null;
@@ -38,10 +36,6 @@ async function createRoom() {
   sendData();
 
   registerPeerConnectionListeners();
-
-  localStream.getTracks().forEach(track => {
-    peerConnection.addTrack(track, localStream);
-  });
 
   // Code for collecting ICE candidates below
   const callerCandidatesCollection = roomRef.collection('callerCandidates');
@@ -73,14 +67,6 @@ async function createRoom() {
   document.querySelector(
     '#currentRoom').innerText = `Current room is ${roomRef.id} - You are the caller!`;
   // Code for creating a room above
-
-  peerConnection.addEventListener('track', event => {
-    console.log('Got remote track:', event.streams[0]);
-    event.streams[0].getTracks().forEach(track => {
-      console.log('Add a track to the remoteStream:', track);
-      remoteStream.addTrack(track);
-    });
-  });
 
   // Listening for remote session description below
   roomRef.onSnapshot(async snapshot => {
@@ -117,7 +103,7 @@ function joinRoom() {
       document.querySelector(
         '#currentRoom').innerText = `Current room is ${roomId} - You are the callee!`;
       await joinRoomById(roomId);
-    }, {once: true});
+    }, { once: true });
   roomDialog.open();
 }
 
@@ -130,11 +116,8 @@ async function joinRoomById(roomId) {
   if (roomSnapshot.exists) {
     console.log('Create PeerConnection with configuration: ', configuration);
     peerConnection = new RTCPeerConnection(configuration);
-    sendData();
+    recvData();
     registerPeerConnectionListeners();
-    localStream.getTracks().forEach(track => {
-      peerConnection.addTrack(track, localStream);
-    });
 
     // Code for collecting ICE candidates below
     const calleeCandidatesCollection = roomRef.collection('calleeCandidates');
@@ -147,14 +130,6 @@ async function joinRoomById(roomId) {
       calleeCandidatesCollection.add(event.candidate.toJSON());
     });
     // Code for collecting ICE candidates above
-
-    peerConnection.addEventListener('track', event => {
-      console.log('Got remote track:', event.streams[0]);
-      event.streams[0].getTracks().forEach(track => {
-        console.log('Add a track to the remoteStream:', track);
-        remoteStream.addTrack(track);
-      });
-    });
 
     // Code for creating SDP answer below
     const offer = roomSnapshot.data().offer;
@@ -188,14 +163,6 @@ async function joinRoomById(roomId) {
 }
 
 async function openUserMedia(e) {
-  const stream = await navigator.mediaDevices.getUserMedia(
-    {video: true, audio: true});
-  document.querySelector('#localVideo').srcObject = stream;
-  localStream = stream;
-  remoteStream = new MediaStream();
-  document.querySelector('#remoteVideo').srcObject = remoteStream;
-
-  console.log('Stream:', document.querySelector('#localVideo').srcObject);
   document.querySelector('#cameraBtn').disabled = true;
   document.querySelector('#joinBtn').disabled = false;
   document.querySelector('#createBtn').disabled = false;
@@ -203,17 +170,22 @@ async function openUserMedia(e) {
 }
 
 function sendData() {
-  dataChannel = peerConnection.createDataChannel("boo");
+  dataChannel = peerConnection.createDataChannel("TimestampDataChannel");
   dataChannel.addEventListener('open', event => {
-    console.log("BOOOO");
     if (interval == null) {
       interval = setInterval(() => {
-        dataChannel.send(Math.random());
+        console.log("Sending Data from Server");
+        dataChannel.send("PICA-PIKA");
       }, 2000);
     }
   });
+}
 
+function recvData() {
+  dataChannel = peerConnection.createDataChannel("TimestampDataChannel");
+  console.log("Setting up Reciever on Client");
   dataChannel.addEventListener('message', event => {
+    console.log("Recieving Data on Client");
     console.log(event.data);
     const message = event.data;
     document.querySelector("#incomingMessages").textContent += message + '\n';
@@ -221,14 +193,6 @@ function sendData() {
 }
 
 async function hangUp(e) {
-  const tracks = document.querySelector('#localVideo').srcObject.getTracks();
-  tracks.forEach(track => {
-    track.stop();
-  });
-
-  if (remoteStream) {
-    remoteStream.getTracks().forEach(track => track.stop());
-  }
 
   if (peerConnection) {
     peerConnection.close();
