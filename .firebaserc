@@ -1,6 +1,7 @@
 {
   "projects": {
     "default": "simulated-hangouts",
-    "simulated-hangouts": "simulated-hangouts"
+    "simulated-hangouts": "simulated-hangouts",
+    "hangouts": "simulated-hangouts"
   }
 }
