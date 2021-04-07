@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <link rel="stylesheet" href="button.css">
+</head>
+
+<body>
+  <div id="controlsDiv">
+    <button id="createRoom">Create Room</button>
+    <button id="joinRoom">Join Room</button>
+    <div>
+      <label for="roomCode">Code: </label>
+      <input id="roomCode" type="text" disabled />
+    </div>
+    <button id="hangUp">Terminate Session</button>
+  </div>
+
+  <!-- The core Firebase JS SDK is always required and must be listed first -->
+  <script src="https://www.gstatic.com/firebasejs/8.3.2/firebase-app.js"></script>
+
+  <!-- TODO: Add SDKs for Firebase products that you want to use
+        https://firebase.google.com/docs/web/setup#available-libraries -->
+  <script src="https://www.gstatic.com/firebasejs/8.3.2/firebase-analytics.js"></script>
+
+  <script src="popup.js"></script>
+</body>
+
+</html>
