@@ -1,14 +1,6 @@
 /* global firebase */
 
-(function () {
-    self.importScripts("firebase/firebase-app.js", "firebase/firebase-analytics.js", "firebase/firebase-auth.js", "firebase/firebase-firestore.js");
-}());
-
-console.log(firebase); // should be truthy
-
-chrome.runtime.onInstalled.addListener(() => {
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+function initFirebaseApp() {
     const firebaseConfig = {
         apiKey: "AIzaSyAymlhRxTn9Vpc5BYC7xrT7iOJ-wtbX5ec",
         authDomain: "simulated-hangouts.firebaseapp.com",
@@ -18,12 +10,18 @@ chrome.runtime.onInstalled.addListener(() => {
         appId: "1:17379851992:web:a4f7e957c910926c58a1ad",
         measurementId: "G-RNGS5Q6MQ3",
     };
+
     // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
-    // firebase.analytics(); cannot initialize analytics from service worker as there is no DOM
-});
+    /*
+     Firebase Analytics is not supported in this environment. Wrap initialization of analytics in analytics.isSupported() to prevent initialization in unsupported environments. Details: (1) This is a browser extension environment
+     firebase.analytics();
+    */
+}
 
-chrome.runtime.onMessage.addListener(function ({ action }) {
+chrome.runtime.onMessage.addListener(function ({ action }, _sender, _sendResponse) {
+    initFirebaseApp();
+
     switch (action) {
     case "createRoom":
         createRoom();
@@ -31,6 +29,9 @@ chrome.runtime.onMessage.addListener(function ({ action }) {
     default:
         console.log("Invalid input");
     }
+
+    // synced sendResponse
+    return false;
 });
 
 // ICE configuration ig
