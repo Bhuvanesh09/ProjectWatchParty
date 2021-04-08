@@ -1,5 +1,7 @@
 /* global firebase */
 
+let firebaseAppInited = false;
+
 function initFirebaseApp() {
     const firebaseConfig = {
         apiKey: "AIzaSyAymlhRxTn9Vpc5BYC7xrT7iOJ-wtbX5ec",
@@ -14,23 +16,40 @@ function initFirebaseApp() {
     // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     /*
-     Firebase Analytics is not supported in this environment. Wrap initialization of analytics in analytics.isSupported() to prevent initialization in unsupported environments. Details: (1) This is a browser extension environment
+     Firebase Analytics is not supported in this environment. Wrap initialization of analytics in
+     analytics.isSupported() to prevent initialization in unsupported environments.
+     Details: (1) This is a browser extension environment
      firebase.analytics();
     */
+
+    firebaseAppInited = true;
 }
 
-chrome.runtime.onMessage.addListener(function ({ action }, _sender, _sendResponse) {
-    initFirebaseApp();
+chrome.runtime.onMessage.addListener(function ({
+    action,
+    ...others
+}, _sender, sendResponse) {
+    if (!firebaseAppInited) {
+        initFirebaseApp();
+    }
 
     switch (action) {
     case "createRoom":
-        createRoom();
-        break;
+        createRoom()
+            .then((roomId) => {
+                sendResponse(roomId);
+            });
+        return true;
+    case "joinRoom":
+        joinRoomById(others.roomId)
+            .then(() => {
+                sendResponse("success");
+            });
+        return true;
     default:
         console.log("Invalid input");
     }
 
-    // synced sendResponse
     return false;
 });
 
@@ -47,24 +66,22 @@ const configuration = {
 };
 
 let peerConnection = null,
-    roomDialog = null,
-    roomId = null,
+    // roomDialog = null,
+    // roomId = null,
     dataChannel = null,
     interval = null;
 
 async function createRoom() {
-    console.log(firebase);
-
-    const db = firebase.firestore(),
-        roomRef = await db.collection("rooms")
-            .doc();
     peerConnection = new RTCPeerConnection(configuration);
     registerPeerConnectionListeners();
     console.log("Create PeerConnection with configuration: ", configuration);
     sendData();
 
-    // Code for collecting ICE candidates below
-    const callerCandidatesCollection = roomRef.collection("callerCandidates");
+    const db = firebase.firestore(),
+        roomRef = await db.collection("rooms")
+            .doc(),
+        // Code for collecting ICE candidates below
+        callerCandidatesCollection = roomRef.collection("callerCandidates");
 
     peerConnection.addEventListener("icecandidate", (event) => {
         if (!event.candidate) {
@@ -87,10 +104,11 @@ async function createRoom() {
             sdp: offer.sdp,
         },
     };
+
     await roomRef.set(roomWithOffer);
-    roomId = roomRef.id;
-    console.log(`New room created with SDP offer. Room ID: ${roomRef.id}`);
-    // TODO: send this room ID to popup JS
+    const roomId = roomRef.id;
+
+    console.log(`New room created with SDP offer. Room ID: ${roomId}`);
     // Code for creating a room above
 
     // Listening for remote session description below
@@ -117,6 +135,8 @@ async function createRoom() {
                 });
         });
     // Listen for remote ICE candidates above
+
+    return roomId;
 }
 
 function registerPeerConnectionListeners() {
@@ -150,5 +170,76 @@ function sendData() {
                 dataChannel.send("PICA-PIKA");
             }, 2000);
         }
+    });
+}
+
+async function joinRoomById(roomId) {
+    const db = firebase.firestore(),
+        roomRef = db.collection("rooms")
+            .doc(`${roomId}`),
+        roomSnapshot = await roomRef.get();
+    console.log("Got room:", roomSnapshot.exists);
+
+    if (roomSnapshot.exists) {
+        console.log("Create PeerConnection with configuration: ", configuration);
+        peerConnection = new RTCPeerConnection(configuration);
+        registerPeerConnectionListeners();
+
+        recvData();
+
+        // Code for collecting ICE candidates below
+        const calleeCandidatesCollection = roomRef.collection("calleeCandidates");
+        peerConnection.addEventListener("icecandidate", (event) => {
+            if (!event.candidate) {
+                console.log("Got final candidate!");
+                return;
+            }
+            console.log("Got candidate: ", event.candidate);
+            calleeCandidatesCollection.add(event.candidate.toJSON());
+        });
+        // Code for collecting ICE candidates above
+
+        // Code for creating SDP answer below
+        const { offer } = roomSnapshot.data();
+        console.log("Got offer:", offer);
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+        const answer = await peerConnection.createAnswer();
+        console.log("Created answer:", answer);
+        await peerConnection.setLocalDescription(answer);
+
+        const roomWithAnswer = {
+            answer: {
+                type: answer.type,
+                sdp: answer.sdp,
+            },
+        };
+        await roomRef.update(roomWithAnswer);
+        // Code for creating SDP answer above
+
+        // Listening for remote ICE candidates below
+        roomRef.collection("callerCandidates")
+            .onSnapshot((snapshot) => {
+                snapshot.docChanges()
+                    .forEach(async (change) => {
+                        if (change.type === "added") {
+                            const data = change.doc.data();
+                            console.log(`Got new remote ICE candidate: ${JSON.stringify(data)}`);
+                            await peerConnection.addIceCandidate(new RTCIceCandidate(data));
+                        }
+                    });
+            });
+        // Listening for remote ICE candidates above
+    }
+}
+
+function recvData() {
+    peerConnection.addEventListener("datachannel", (event) => {
+        const dataChannelRecv = event.channel;
+
+        dataChannelRecv.addEventListener("message", (eventMessage) => {
+            console.log("Receiving Data on Client");
+            const message = eventMessage.data;
+            console.log(message);
+        });
     });
 }
