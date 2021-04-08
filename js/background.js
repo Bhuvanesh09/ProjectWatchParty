@@ -90,9 +90,7 @@ async function createRoom() {
     await roomRef.set(roomWithOffer);
     roomId = roomRef.id;
     console.log(`New room created with SDP offer. Room ID: ${roomRef.id}`);
-    document.querySelector(
-        "#roomCode",
-    ).value = `${roomRef.id} (!C)`;
+    // TODO: send this room ID to popup JS
     // Code for creating a room above
 
     // Listening for remote session description below
