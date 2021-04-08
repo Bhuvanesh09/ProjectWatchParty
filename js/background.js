@@ -46,6 +46,16 @@ chrome.runtime.onMessage.addListener(function ({
                 sendResponse("success");
             });
         return true;
+    case "hangup":
+        hangUp((status) => {
+            if (status) {
+                sendResponse("Exited!");
+            } else {
+                sendResponse("Errored!");
+            }
+        });
+
+        return true;
     default:
         console.log("Invalid input");
     }
@@ -65,11 +75,37 @@ const configuration = {
     iceCandidatePoolSize: 10,
 };
 
+// TOOD: Will peerconnection stay alive while data is being sent? Or will the event page die midway killing the connection?
 let peerConnection = null,
-    // roomDialog = null,
-    // roomId = null,
     dataChannel = null,
-    interval = null;
+    interval = null,
+    getRoomId,
+    setRoomId;
+
+(function () {
+    // any possibly persistent information needs to be stored like this as this is an event page
+    const ROOM_ID_KEY = "roomId";
+
+    getRoomId = (callback) => {
+        chrome.storage.local.get([ROOM_ID_KEY], function (result) {
+            let joinedRoomId;
+            if (typeof result[ROOM_ID_KEY] === "undefined") {
+                joinedRoomId = result[ROOM_ID_KEY];
+            } else {
+                joinedRoomId = undefined;
+            }
+            callback(joinedRoomId);
+        });
+    };
+
+    setRoomId = (value) => {
+        chrome.storage.local.set({ ROOM_ID_KEY: value }, function () {
+            if (chrome.runtime.lastError) {
+                console.log("Whoops! What went wrong?", chrome.runtime.lastError);
+            }
+        });
+    };
+}());
 
 async function createRoom() {
     peerConnection = new RTCPeerConnection(configuration);
@@ -136,6 +172,7 @@ async function createRoom() {
         });
     // Listen for remote ICE candidates above
 
+    setRoomId(roomId);
     return roomId;
 }
 
@@ -181,6 +218,8 @@ async function joinRoomById(roomId) {
     console.log("Got room:", roomSnapshot.exists);
 
     if (roomSnapshot.exists) {
+        setRoomId(roomId);
+
         console.log("Create PeerConnection with configuration: ", configuration);
         peerConnection = new RTCPeerConnection(configuration);
         registerPeerConnectionListeners();
@@ -241,5 +280,32 @@ function recvData() {
             const message = eventMessage.data;
             console.log(message);
         });
+    });
+}
+
+function hangUp(callback) {
+    if (peerConnection) {
+        peerConnection.close();
+    }
+
+    getRoomId(async (roomId) => { // Delete room on hangup
+        if (roomId) {
+            const db = firebase.firestore(),
+                roomRef = db.collection("rooms")
+                    .doc(roomId),
+                calleeCandidates = await roomRef.collection("calleeCandidates")
+                    .get();
+            calleeCandidates.forEach(async (candidate) => {
+                await candidate.ref.delete();
+            });
+            const callerCandidates = await roomRef.collection("callerCandidates")
+                .get();
+            callerCandidates.forEach(async (candidate) => {
+                await candidate.ref.delete();
+            });
+            await roomRef.delete();
+        }
+
+        callback(true);
     });
 }

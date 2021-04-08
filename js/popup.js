@@ -5,17 +5,8 @@ function init() {
     const joinRoomButton = document.getElementById("joinRoom");
     joinRoomButton.addEventListener("click", joinRoom);
 
-    const hangUp = document.getElementById("hangUp");
-    hangUp.addEventListener("click", async () => {
-        const [tab] = await chrome.tabs.query({
-            active: true,
-            currentWindow: true,
-        });
-        chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            function: hangUp,
-        });
-    });
+    const hangUpButton = document.getElementById("hangUp");
+    hangUpButton.addEventListener("click", exitRoom);
 }
 
 function createRoom(_clickEvent) {
@@ -52,35 +43,22 @@ function joinRoom(_clickEvent) {
     });
 }
 
-async function hangUp(e) {
-    document.querySelector("#createBtn").disabled = false;
-    document.querySelector("#joinBtn").disabled = false;
-    document.querySelector("#hangUp").disabled = true;
-    document.querySelector("#roomCode").disabled = false;
+function exitRoom(_clickEvent) {
+    const statusElm = document.getElementById("createdRoomId");
+    statusElm.innerText = "Exiting room...";
 
-    if (peerConnection) {
-        peerConnection.close();
-    }
+    // TODO: give error if not joined any roomt yet
 
-    // Delete room on hangup
-    if (roomId) {
-        const db = firebase.firestore(),
-            roomRef = db.collection("rooms")
-                .doc(roomId),
-            calleeCandidates = await roomRef.collection("calleeCandidates")
-                .get();
-        calleeCandidates.forEach(async (candidate) => {
-            await candidate.ref.delete();
-        });
-        const callerCandidates = await roomRef.collection("callerCandidates")
-            .get();
-        callerCandidates.forEach(async (candidate) => {
-            await candidate.ref.delete();
-        });
-        await roomRef.delete();
-    }
-
-    document.location.reload(true);
+    chrome.runtime.sendMessage({
+        action: "hangup",
+    }, function (status) {
+        if (chrome.runtime.lastError) {
+            console.log("ERROR", chrome.runtime.lastError);
+            statusElm.innerText = "Error exiting room, check console logs";
+        } else {
+            statusElm.innerText = status;
+        }
+    });
 }
 
 init();
