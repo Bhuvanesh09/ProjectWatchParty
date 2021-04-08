@@ -33,6 +33,8 @@
         "prefer-destructuring": "warn",
         "import/prefer-default-export": "off",
         "max-len": ["warn", { "code": 100 }],
-        "no-continue": "off"
+        "no-continue": "off",
+        "no-unused-vars": ["error", {"varsIgnorePattern": "^_.+$", "argsIgnorePattern": "^_.+$"}],
+        "prefer-arrow-callback": "off"
     }
 }

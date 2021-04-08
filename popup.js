@@ -1,34 +1,13 @@
-// ICE configuration ig
-const configuration = {
-    iceServers: [
-        {
-            urls: "turn:felicity.iiit.ac.in:3478",
-            username: "felicity",
-            credential: "5xXJa5rwSafFTpjQEWDdPfRSdFaeKmIy",
-        },
-    ],
-    iceCandidatePoolSize: 10,
-};
-
-let peerConnection = null,
-    roomDialog = null,
-    roomId = null,
-    dataChannel = null,
-    interval = null;
-
 function init() {
     const createRoomButton = document.getElementById("createRoom");
-    createRoomButton.addEventListener("click", async () => {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            function: createRoom,
-        });
-    });
+    createRoomButton.addEventListener("click", createRoom);
 
     const joinRoomButton = document.getElementById("joinRoom");
     joinRoomButton.addEventListener("click", async () => {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const [tab] = await chrome.tabs.query({
+            active: true,
+            currentWindow: true,
+        });
         chrome.scripting.executeScript({
             target: { tabId: tab.id },
             function: createRoom,
@@ -37,7 +16,10 @@ function init() {
 
     const hangUp = document.getElementById("hangUp");
     hangUp.addEventListener("click", async () => {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const [tab] = await chrome.tabs.query({
+            active: true,
+            currentWindow: true,
+        });
         chrome.scripting.executeScript({
             target: { tabId: tab.id },
             function: hangUp,
@@ -45,75 +27,16 @@ function init() {
     });
 }
 
-async function createRoom() {
-    document.querySelector("#createBtn").disabled = true;
-    document.querySelector("#joinBtn").disabled = true;
-    document.querySelector("#hangUp").disabled = false;
-    document.querySelector("#roomCode").disabled = true;
+function createRoom(_clickEvent) {
+    // document.querySelector("#createBtn").disabled = true;
+    // document.querySelector("#joinBtn").disabled = true;
+    // document.querySelector("#hangUp").disabled = false;
+    // document.querySelector("#roomCode").disabled = true;
 
-    const db = firebase.firestore(),
-        roomRef = await db.collection("rooms").doc();
-
-    console.log("Create PeerConnection with configuration: ", configuration);
-
-    peerConnection = new RTCPeerConnection(configuration);
-    registerPeerConnectionListeners();
-    sendData();
-
-    // Code for collecting ICE candidates below
-    const callerCandidatesCollection = roomRef.collection("callerCandidates");
-
-    peerConnection.addEventListener("icecandidate", (event) => {
-        if (!event.candidate) {
-            console.log("Got final candidate!");
-            return;
-        }
-        console.log("Got candidate: ", event.candidate);
-        callerCandidatesCollection.add(event.candidate.toJSON());
+    chrome.runtime.sendMessage({ action: "createRoom" }, function (_response) {
+        console.log(chrome.runtime.lastError);
+        // TODO: check if response is successful
     });
-    // Code for collecting ICE candidates above
-
-    // Code for creating a room below
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
-    console.log("Created offer:", offer);
-
-    const roomWithOffer = {
-        offer: {
-            type: offer.type,
-            sdp: offer.sdp,
-        },
-    };
-    await roomRef.set(roomWithOffer);
-    roomId = roomRef.id;
-    console.log(`New room created with SDP offer. Room ID: ${roomRef.id}`);
-    document.querySelector(
-        "#roomCode",
-    ).value = `${roomRef.id} (!C)`;
-    // Code for creating a room above
-
-    // Listening for remote session description below
-    roomRef.onSnapshot(async (snapshot) => {
-        const data = snapshot.data();
-        if (!peerConnection.currentRemoteDescription && data && data.answer) {
-            console.log("Got remote description: ", data.answer);
-            const rtcSessionDescription = new RTCSessionDescription(data.answer);
-            await peerConnection.setRemoteDescription(rtcSessionDescription);
-        }
-    });
-    // Listening for remote session description above
-
-    // Listen for remote ICE candidates below
-    roomRef.collection("calleeCandidates").onSnapshot((snapshot) => {
-        snapshot.docChanges().forEach(async (change) => {
-            if (change.type === "added") {
-                const data = change.doc.data();
-                console.log(`Got new remote ICE candidate: ${JSON.stringify(data)}`);
-                await peerConnection.addIceCandidate(new RTCIceCandidate(data));
-            }
-        });
-    });
-    // Listen for remote ICE candidates above
 }
 
 function joinRoom() {
@@ -122,18 +45,20 @@ function joinRoom() {
     document.querySelector("#hangUp").disabled = false;
     document.querySelector("#roomCode").disabled = true;
 
-    document.querySelector("#confirmJoinBtn").addEventListener("click", async () => {
-        roomId = document.querySelector("#roomCode").value;
-        console.log("Join room: ", roomId);
-        console.log(`Current room is ${roomId} - You are the callee!`);
-        await joinRoomById(roomId);
-    }, { once: true });
+    document.querySelector("#confirmJoinBtn")
+        .addEventListener("click", async () => {
+            roomId = document.querySelector("#roomCode").value;
+            console.log("Join room: ", roomId);
+            console.log(`Current room is ${roomId} - You are the callee!`);
+            await joinRoomById(roomId);
+        }, { once: true });
     roomDialog.open();
 }
 
 async function joinRoomById(roomId) {
     const db = firebase.firestore(),
-        roomRef = db.collection("rooms").doc(`${roomId}`),
+        roomRef = db.collection("rooms")
+            .doc(`${roomId}`),
         roomSnapshot = await roomRef.get();
     console.log("Got room:", roomSnapshot.exists);
 
@@ -174,29 +99,19 @@ async function joinRoomById(roomId) {
         // Code for creating SDP answer above
 
         // Listening for remote ICE candidates below
-        roomRef.collection("callerCandidates").onSnapshot((snapshot) => {
-            snapshot.docChanges().forEach(async (change) => {
-                if (change.type === "added") {
-                    const data = change.doc.data();
-                    console.log(`Got new remote ICE candidate: ${JSON.stringify(data)}`);
-                    await peerConnection.addIceCandidate(new RTCIceCandidate(data));
-                }
+        roomRef.collection("callerCandidates")
+            .onSnapshot((snapshot) => {
+                snapshot.docChanges()
+                    .forEach(async (change) => {
+                        if (change.type === "added") {
+                            const data = change.doc.data();
+                            console.log(`Got new remote ICE candidate: ${JSON.stringify(data)}`);
+                            await peerConnection.addIceCandidate(new RTCIceCandidate(data));
+                        }
+                    });
             });
-        });
-    // Listening for remote ICE candidates above
+        // Listening for remote ICE candidates above
     }
-}
-
-function sendData() {
-    dataChannel = peerConnection.createDataChannel("TimestampDataChannel");
-    dataChannel.addEventListener("open", (event) => {
-        if (interval == null) {
-            interval = setInterval(() => {
-                console.log("Sending Data from Server");
-                dataChannel.send("PICA-PIKA");
-            }, 2000);
-        }
-    });
 }
 
 function recvData() {
@@ -224,12 +139,15 @@ async function hangUp(e) {
     // Delete room on hangup
     if (roomId) {
         const db = firebase.firestore(),
-            roomRef = db.collection("rooms").doc(roomId),
-            calleeCandidates = await roomRef.collection("calleeCandidates").get();
+            roomRef = db.collection("rooms")
+                .doc(roomId),
+            calleeCandidates = await roomRef.collection("calleeCandidates")
+                .get();
         calleeCandidates.forEach(async (candidate) => {
             await candidate.ref.delete();
         });
-        const callerCandidates = await roomRef.collection("callerCandidates").get();
+        const callerCandidates = await roomRef.collection("callerCandidates")
+            .get();
         callerCandidates.forEach(async (candidate) => {
             await candidate.ref.delete();
         });
@@ -239,24 +157,4 @@ async function hangUp(e) {
     document.location.reload(true);
 }
 
-function registerPeerConnectionListeners() {
-    peerConnection.addEventListener("icegatheringstatechange", () => {
-        console.log(
-            `ICE gathering state changed: ${peerConnection.iceGatheringState}`,
-        );
-    });
-
-    peerConnection.addEventListener("connectionstatechange", () => {
-        console.log(`Connection state change: ${peerConnection.connectionState}`);
-    });
-
-    peerConnection.addEventListener("signalingstatechange", () => {
-        console.log(`Signaling state change: ${peerConnection.signalingState}`);
-    });
-
-    peerConnection.addEventListener("iceconnectionstatechange ", () => {
-        console.log(
-            `ICE connection state change: ${peerConnection.iceConnectionState}`,
-        );
-    });
-}
+init();
