@@ -1,0 +1,30 @@
+div#syncBar {
+  height: 15vh;
+  margin: 2vw;
+  margin-top: 6vh;
+  position: relative;
+  align-items: center;
+  text-align: center;
+}
+
+.bar-step {
+    position: absolute;
+    margin-top:0px;
+	z-index:1;
+    font-size:12px;
+}
+
+.label-txt {
+    float: right;
+    margin-left: 1vw;
+    margin-top: 1rem;
+}
+
+.label-line {
+    float: left;
+    background: #000;
+    height:1.5rem;
+	width:2px;
+    margin-left: 0px;
+}
+
