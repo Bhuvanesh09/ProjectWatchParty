@@ -1,6 +1,17 @@
-# Firebase + WebRTC Codelab
+# YouTube Watch Party
 
-This is the GitHub repo for the FirebaseRTC codelab. This will teach you how 
-to use Firebase Cloudstore for signalling in a WebRTC video chat application.
+## Installation
 
-See http://webrtc.org for details.
+Coming soon on Firefox and Chrome web stores!
+
+## Development Usage
+
+First download the repository as zip (or clone it)
+
+For Firefox, goto `about:debugging` and follow instructions on clicking "Load Temporary Add-On..." and select the
+manifest.json file.
+
+For Chrome, goto `chrome:extensions`, enable "Developer Mode" from top-right, then press "Load unpacked" and select the
+repo folder.
+
+When making any changes, press the "Reload" button/icon on the corresponding pages to refresh the extension with the changes (note: will also restart the event page)
