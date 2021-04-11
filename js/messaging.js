@@ -3,6 +3,7 @@ async function sendTime(time) {
 }
 
 async function recvTime(data) {
+    console.log(">>> Chrome Messaging: " + data.time);
     chrome.runtime.sendMessage({
         action: "recvTime",
         time: data.time
