@@ -49,23 +49,29 @@ Controller.prototype.goto = function (time) {
 }
 
 
-function init() {
-    var controller = new Controller("yt");
-    setInterval(function () {
-        chrome.runtime.sendMessage({
-            action: "sendTime",
-            time: controller.gettime()
-        }, function (_response) {
-        });
-    }, 1000);
-    setInterval(function () {
-        chrome.runtime.sendMessage({
-            action: "recvTime",
-        }, function (response) {
-            console.log("Recieved timestamp at: " + response.time);
-            controller.seek(response.time);
-        });
-    }, 1000);
-}
+var controller = new Controller("yt");
 
-init();
+setInterval(function () {
+    chrome.runtime.sendMessage({
+        action: "sendTime",
+        time: controller.gettime()
+    }, function (_response) {
+    });
+}, 1000);
+
+
+chrome.runtime.onMessage.addListener(function ({
+    action,
+    ...others
+}, _sender, sendResponse) {
+
+    switch (action) {
+        case "recvTime":
+            console.log("Recieved timestamp at: " + others.time);
+            controller.seek(others.time);
+            sendResponse({ done: true });
+            return true;
+    }
+    return false;
+});
+

@@ -1,9 +1,13 @@
 async function sendTime(time) {
-    console.log("I am at " + time);
+    sendData({ time: time });
 }
 
-async function recvTime() {
-    return { time: 212 };
+async function recvTime(data) {
+    chrome.runtime.sendMessage({
+        action: "recvTime",
+        time: data.time
+    }, function (_response) {
+    });
 }
 
 
@@ -18,40 +22,12 @@ chrome.runtime.onMessage.addListener(function ({
     }
 
     switch (action) {
-        case "createRoom":
-            createRoom()
-                .then((roomId) => {
-                    sendResponse(roomId);
-                });
-            return true;
-        case "joinRoom":
-            joinRoomById(others.roomId)
-                .then(() => {
-                    sendResponse("success");
-                });
-            return true;
-        case "hangup":
-            hangUp((status) => {
-                if (status) {
-                    sendResponse("Exited!");
-                } else {
-                    sendResponse("Errored!");
-                }
-            });
-            return true;
         case "sendTime":
             sendTime(others.time)
                 .then(() => {
                     sendResponse("success");
                 });
             return true;
-        case "recvTime":
-            recvTime().then((response) => {
-                sendResponse(response);
-            })
-            return true;
-        default:
-            console.log("Invalid input");
     }
     return false;
 });
