@@ -212,7 +212,7 @@ function initializeDataChannel(peerConnection) { // {{{
         if (interval == null) {
             interval = setInterval(() => {
                 console.log("Sending Data from Server");
-                dataChannel.send("PICA-PIKA");
+                dataChannel.send(`PICA-PIKA from ${MY_NAME}`);
             }, 2000);
         }
     });
