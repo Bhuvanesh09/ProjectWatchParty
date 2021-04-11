@@ -153,7 +153,12 @@ async function advertiseOfferForPeers(selfRef) { // {{{
                         if (expectedCandidateCount === iceCandidateReceivedCount) {
                             peers.push(peerConnection);
                             advertiseOfferForPeers(selfRef);
-                            await selfRef.collection("calleeCandidates").delete();
+
+                            const calleeCandidates = await selfRef.collection("calleeCandidates").get();
+
+                            calleeCandidates.forEach(async (candidate) => {
+                                await candidate.ref.delete();
+                            });
                         }
                     });
             });
