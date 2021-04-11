@@ -4,7 +4,7 @@
   "version": "0.1",
   "manifest_version": 2,
   "background": {
-    "persistent": false,
+    "persistent": true,
     "page": "html/background.html"
   },
   "permissions": [
