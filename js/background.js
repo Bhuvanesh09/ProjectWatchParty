@@ -153,6 +153,7 @@ async function advertiseOfferForPeers(selfRef) { // {{{
                         if (expectedCandidateCount === iceCandidateReceivedCount) {
                             peers.push(peerConnection);
                             advertiseOfferForPeers(selfRef);
+                            await selfRef.collection("calleeCandidates").delete();
                         }
                     });
             });
@@ -163,9 +164,14 @@ async function advertiseOfferForPeers(selfRef) { // {{{
 async function createRoom() { // {{{
     console.log("MY_NAME", MY_NAME);
 
-    const roomRef = await firebase.firestore().collection("rooms").doc(),
-        // TODO: dup [MARKER:1]
-        selfRef = await roomRef.collection("peers").doc(MY_NAME);
+    const roomRef = firebase.firestore().collection("rooms").doc();
+    // firestore doesnt like empty documents.
+    // fill dummy data to actually create the document
+    // [firestore web ui will display the document name in italics if it doesn't actually exist]
+    await roomRef.set({ exists: true });
+
+    // TODO: dup [MARKER:1]
+    const selfRef = await roomRef.collection("peers").doc(MY_NAME);
 
     advertiseOfferForPeers(selfRef);
 
@@ -212,7 +218,7 @@ function initializeDataChannel(peerConnection) { // {{{
 async function processOffer(peerRef) { // {{{
     console.debug("Create PeerConnection with configuration: ", ICEConfiguration);
     const peerConnection = new RTCPeerConnection(ICEConfiguration);
-    registerPeerConnectionListeners();
+    registerPeerConnectionListeners(peerConnection);
 
     recvData(peerConnection);
 
@@ -235,7 +241,8 @@ async function processOffer(peerRef) { // {{{
     // }}}
 
     // creating SDP answer {{{
-    const { offer } = peerRef.data();
+    const peerSnapshot = await peerRef.get(),
+        { offer } = peerSnapshot.data();
     console.debug("Got offer:", offer);
     await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
     const answer = await peerConnection.createAnswer();
