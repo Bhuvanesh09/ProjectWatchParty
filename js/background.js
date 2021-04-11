@@ -33,15 +33,15 @@ function initFirebaseApp() {
 // }}}
 
 const ICEConfiguration = {
-        iceServers: [
-            {
-                urls: "turn:felicity.iiit.ac.in:3478",
-                username: "felicity",
-                credential: "5xXJa5rwSafFTpjQEWDdPfRSdFaeKmIy",
-            },
-        ],
-        iceCandidatePoolSize: 10,
-    },
+    iceServers: [
+        {
+            urls: "turn:felicity.iiit.ac.in:3478",
+            username: "felicity",
+            credential: "5xXJa5rwSafFTpjQEWDdPfRSdFaeKmIy",
+        },
+    ],
+    iceCandidatePoolSize: 10,
+},
     // TODO: link peerconnection and datachannel. maybe a "class"?
     peers = [],
     dataChannels = [];
@@ -130,8 +130,8 @@ async function advertiseOfferForPeers(selfRef) { // {{{
 
     // listening for remote ICE candidates {{{
     {
-    // to handle out of order messages
-    // this ensures that we always receive all candidates
+        // to handle out of order messages
+        // this ensures that we always receive all candidates
         let iceCandidateReceivedCount = 0,
             expectedCandidateCount = Number.POSITIVE_INFINITY;
         selfRef.collection("calleeCandidates")
@@ -221,8 +221,7 @@ function initializeDataChannel(peerConnection) { // {{{
     dataChannel.addEventListener("open", (_event) => {
         if (interval == null) {
             interval = setInterval(() => {
-                console.log("Sending Data from Server");
-                dataChannel.send(`PICA-PIKA from ${MY_NAME}`);
+                dataChannel.send(`Ping is being from ${MY_NAME}`);
             }, 2000);
         }
     });
@@ -275,8 +274,8 @@ async function processOffer(peerRef) { // {{{
 
     // listening for remote ICE candidates {{{
     {
-    // to handle out of order messages
-    // this ensures that we always receive all candidates
+        // to handle out of order messages
+        // this ensures that we always receive all candidates
         let iceCandidateReceivedCount = 0,
             expectedCandidateCount = Number.POSITIVE_INFINITY;
         peerRef.collection("callerCandidates")
@@ -365,45 +364,3 @@ function hangUp(callback) { // {{{
     });
     // }}}
 } // }}}
-
-// message listeners {{{
-chrome.runtime.onMessage.addListener(function ({
-    action,
-    ...others
-}, _sender, sendResponse) {
-    if (!firebaseAppInited) {
-        initFirebaseApp();
-    }
-
-    switch (action) {
-    case "createRoom":
-        createRoom()
-            .then((roomId) => {
-                sendResponse(roomId);
-            });
-        return true;
-    case "joinRoom":
-        joinRoomById(others.roomId)
-            .then(() => {
-                sendResponse("success");
-            });
-        return true;
-    case "hangup":
-        hangUp((status) => {
-            if (status) {
-                sendResponse("Exited!");
-            } else {
-                sendResponse("Errored!");
-            }
-        });
-
-        return true;
-    default:
-        console.log("Invalid input");
-    }
-
-    return false;
-});
-// }}}
-
-// vim: fdm=marker ts=4 sts=4 sw=4
