@@ -136,6 +136,11 @@ async function advertiseOfferForPeers(selfRef) { // {{{
             expectedCandidateCount = Number.POSITIVE_INFINITY;
         selfRef.collection("calleeCandidates")
             .onSnapshot((snapshot) => {
+                // prevent listener from being fired if it has been invalidated
+                if (expectedCandidateCount < 0) {
+                    return;
+                }
+
                 snapshot.docChanges()
                     .forEach(async (change) => {
                         if (change.type === "added") {
@@ -156,6 +161,11 @@ async function advertiseOfferForPeers(selfRef) { // {{{
 
                             const calleeCandidates = await selfRef.collection("calleeCandidates").get();
 
+                            // invalidate this snapshot listener since this peer connection
+                            // has been established successfully.
+                            expectedCandidateCount = Number.NEGATIVE_INFINITY;
+
+                            // invalidate before deletion so that this listener doesn't fire again
                             calleeCandidates.forEach(async (candidate) => {
                                 await candidate.ref.delete();
                             });
