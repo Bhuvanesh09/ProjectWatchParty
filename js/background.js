@@ -30,18 +30,19 @@ function initFirebaseApp() {
 
     firebaseAppInited = true;
 }
+
 // }}}
 
 const ICEConfiguration = {
-    iceServers: [
-        {
-            urls: "turn:felicity.iiit.ac.in:3478",
-            username: "felicity",
-            credential: "5xXJa5rwSafFTpjQEWDdPfRSdFaeKmIy",
-        },
-    ],
-    iceCandidatePoolSize: 10,
-},
+        iceServers: [
+            {
+                urls: "turn:felicity.iiit.ac.in:3478",
+                username: "felicity",
+                credential: "5xXJa5rwSafFTpjQEWDdPfRSdFaeKmIy",
+            },
+        ],
+        iceCandidatePoolSize: 10,
+    },
     // TODO: link peerconnection and datachannel. maybe a "class"?
     peers = [],
     dataChannels = [];
@@ -53,7 +54,9 @@ let peerConnection = null,
     MY_NAME;
 
 // TODO: add an interface to allow the user to set this
-chrome.storage.local.get("username", (username) => { MY_NAME = username.username; });
+chrome.storage.local.get("username", (username) => {
+    MY_NAME = username.username;
+});
 
 { // TODO: fix: @sigmag {{{
     const ROOM_ID_KEY = "roomId";
@@ -100,13 +103,19 @@ async function advertiseOfferForPeers(selfRef) { // {{{
     peerConnection.addEventListener("icecandidate", (event) => {
         if (!event.candidate) {
             console.debug("Got final candidate!");
-            callerCandidatesCollection.add({ type: "end", data: iceCandidateSendCount });
+            callerCandidatesCollection.add({
+                type: "end",
+                data: iceCandidateSendCount,
+            });
             return;
         }
 
         console.debug("Got candidate: ", event.candidate);
         iceCandidateSendCount++;
-        const payload = { type: "candidate", data: event.candidate.toJSON() };
+        const payload = {
+            type: "candidate",
+            data: event.candidate.toJSON(),
+        };
         callerCandidatesCollection.add(payload);
     });
     // }}}
@@ -153,7 +162,10 @@ async function advertiseOfferForPeers(selfRef) { // {{{
                 snapshot.docChanges()
                     .forEach(async (change) => {
                         if (change.type === "added") {
-                            const { type, data } = change.doc.data();
+                            const {
+                                type,
+                                data,
+                            } = change.doc.data();
 
                             if (type === "end") {
                                 expectedCandidateCount = data;
@@ -168,7 +180,8 @@ async function advertiseOfferForPeers(selfRef) { // {{{
                             peers.push(peerConnection);
                             advertiseOfferForPeers(selfRef);
 
-                            const calleeCandidates = await selfRef.collection("calleeCandidates").get();
+                            const calleeCandidates = await selfRef.collection("calleeCandidates")
+                                .get();
 
                             // invalidate this snapshot listener since this peer connection
                             // has been established successfully.
@@ -188,14 +201,17 @@ async function advertiseOfferForPeers(selfRef) { // {{{
 async function createRoom() { // {{{
     console.log("MY_NAME", MY_NAME);
 
-    const roomRef = firebase.firestore().collection("rooms").doc();
+    const roomRef = firebase.firestore()
+        .collection("rooms")
+        .doc();
     // firestore doesnt like empty documents.
     // fill dummy data to actually create the document
     // [firestore web ui will display the document name in italics if it doesn't actually exist]
     await roomRef.set({ exists: true });
 
     // TODO: dup [MARKER:1]
-    const selfRef = await roomRef.collection("peers").doc(MY_NAME);
+    const selfRef = await roomRef.collection("peers")
+        .doc(MY_NAME);
 
     advertiseOfferForPeers(selfRef);
 
@@ -239,13 +255,19 @@ async function processOffer(peerRef) { // {{{
     peerConnection.addEventListener("icecandidate", (event) => {
         if (!event.candidate) {
             console.debug("Got final candidate!");
-            calleeCandidatesCollection.add({ type: "end", data: iceCandidateSendCount });
+            calleeCandidatesCollection.add({
+                type: "end",
+                data: iceCandidateSendCount,
+            });
             return;
         }
 
         console.debug("Got candidate: ", event.candidate);
         iceCandidateSendCount++;
-        const payload = { type: "candidate", data: event.candidate.toJSON() };
+        const payload = {
+            type: "candidate",
+            data: event.candidate.toJSON(),
+        };
         calleeCandidatesCollection.add(payload);
     });
     // }}}
@@ -279,7 +301,10 @@ async function processOffer(peerRef) { // {{{
                 snapshot.docChanges()
                     .forEach(async (change) => {
                         if (change.type === "added") {
-                            const { type, data } = change.doc.data();
+                            const {
+                                type,
+                                data,
+                            } = change.doc.data();
 
                             if (type === "end") {
                                 expectedCandidateCount = data;
@@ -302,9 +327,11 @@ async function processOffer(peerRef) { // {{{
 async function joinRoomById(roomId) { // {{{
     console.log(`Joining room: '${roomId}'`);
     const db = await firebase.firestore(),
-        roomRef = await db.collection("rooms").doc(roomId),
+        roomRef = await db.collection("rooms")
+            .doc(roomId),
         roomSnapshot = await roomRef.get(),
-        peerSnapshot = await roomRef.collection("peers").get();
+        peerSnapshot = await roomRef.collection("peers")
+            .get();
     console.log("Got room? ", roomSnapshot.exists);
 
     if (!roomSnapshot.exists) {
@@ -312,18 +339,22 @@ async function joinRoomById(roomId) { // {{{
     }
     setRoomId(roomId);
 
-    peerSnapshot.forEach(async (peer) => { await processOffer(peer.ref); });
+    peerSnapshot.forEach(async (peer) => {
+        await processOffer(peer.ref);
+    });
 
     // TODO: dup [MARKER:1]
-    const selfRef = await roomRef.collection("peers").doc(MY_NAME);
+    const selfRef = await roomRef.collection("peers")
+        .doc(MY_NAME);
     advertiseOfferForPeers(selfRef);
 } // }}}
 
-
 async function sendData(object) {
-    while (!sendChannelIsReady);
+    while (!sendChannelIsReady) {
+
+    }
     packet = JSON.stringify(object);
-    console.log("rtc> Sending message: " + packet);
+    console.log(`rtc> Sending message: ${packet}`);
     dataChannel.send(packet);
 }
 
@@ -332,7 +363,7 @@ function recvData(peerConnection) { // {{{
         const dataChannelRecv = event.channel;
 
         dataChannelRecv.addEventListener("message", (eventMessage) => {
-            console.log("rtc> Receiving Message: " + eventMessage.data);
+            console.log(`rtc> Receiving Message: ${eventMessage.data}`);
             const message = JSON.parse(eventMessage.data);
             recvTime(message);
         });
@@ -350,14 +381,19 @@ function hangUp(callback) { // {{{
     getRoomId(async (roomId) => {
         if (roomId) {
             const db = firebase.firestore(),
-                selfRef = db.collection("rooms").doc(roomId).collection("peers").doc(MY_NAME),
-                calleeCandidates = await selfRef.collection("calleeCandidates").get();
+                selfRef = db.collection("rooms")
+                    .doc(roomId)
+                    .collection("peers")
+                    .doc(MY_NAME),
+                calleeCandidates = await selfRef.collection("calleeCandidates")
+                    .get();
 
             calleeCandidates.forEach(async (candidate) => {
                 await candidate.ref.delete();
             });
 
-            const callerCandidates = await selfRef.collection("callerCandidates").get();
+            const callerCandidates = await selfRef.collection("callerCandidates")
+                .get();
             callerCandidates.forEach(async (candidate) => {
                 await candidate.ref.delete();
             });
@@ -379,27 +415,27 @@ chrome.runtime.onMessage.addListener(function ({
     }
 
     switch (action) {
-        case "createRoom":
-            createRoom()
-                .then((roomId) => {
-                    sendResponse(roomId);
-                });
-            return true;
-        case "joinRoom":
-            joinRoomById(others.roomId)
-                .then(() => {
-                    sendResponse("success");
-                });
-            return true;
-        case "hangup":
-            hangUp((status) => {
-                if (status) {
-                    sendResponse("Exited!");
-                } else {
-                    sendResponse("Errored!");
-                }
+    case "createRoom":
+        createRoom()
+            .then((roomId) => {
+                sendResponse(roomId);
             });
-            return true;
+        return true;
+    case "joinRoom":
+        joinRoomById(others.roomId)
+            .then(() => {
+                sendResponse("success");
+            });
+        return true;
+    case "hangup":
+        hangUp((status) => {
+            if (status) {
+                sendResponse("Exited!");
+            } else {
+                sendResponse("Errored!");
+            }
+        });
+        return true;
     }
 
     return false;
