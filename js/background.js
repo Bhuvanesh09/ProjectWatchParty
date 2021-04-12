@@ -33,6 +33,36 @@ function initFirebaseApp() {
 
 // }}}
 
+class Peer {
+    static SENDER_TYPE = "sender";
+
+    static RECEIVER_TYPE = "receiver";
+
+    peer;
+
+    dataChannel;
+
+    type;
+
+    constructor(peerConnection, dataChannel, type) {
+        this.peer = peerConnection;
+        this.dataChannel = dataChannel;
+        this.type = type;
+    }
+
+    close() {
+        this.peer.close();
+    }
+
+    isSendable() {
+        return this.dataChannel.readyState === "open" && this.type === "sender";
+    }
+
+    send(packet) {
+        this.dataChannel.send(packet);
+    }
+}
+
 const ICEConfiguration = {
         iceServers: [
             {
@@ -43,9 +73,7 @@ const ICEConfiguration = {
         ],
         iceCandidatePoolSize: 10,
     },
-    // TODO: link peerconnection and datachannel. maybe a "class"?
-    peers = [],
-    dataChannels = [];
+    peers = [];
 
 let getRoomId,
     setRoomId,
@@ -87,8 +115,8 @@ async function advertiseOfferForPeers(selfRef) { // {{{
 
     const dataChannel = peerConnection.createDataChannel("TimestampDataChannel");
     dataChannel.addEventListener("open", (_event) => {
+        console.log(_event, "Datachannel opened");
     });
-    dataChannels.push(dataChannel);
 
     const callerCandidatesCollection = await selfRef.collection("callerCandidates");
     let iceCandidateSendCount = 0;
@@ -171,7 +199,7 @@ async function advertiseOfferForPeers(selfRef) { // {{{
                         }
 
                         if (expectedCandidateCount === iceCandidateReceivedCount) {
-                            peers.push(peerConnection);
+                            peers.push(new Peer(peerConnection, dataChannel, Peer.SENDER_TYPE));
                             advertiseOfferForPeers(selfRef);
 
                             const calleeCandidates = await selfRef.collection("calleeCandidates")
@@ -310,7 +338,8 @@ async function processOffer(peerRef) { // {{{
                         }
 
                         if (expectedCandidateCount === iceCandidateReceivedCount) {
-                            peers.push(peerConnection);
+                            // TODO: undefined datachannel :/
+                            // peers.push(new Peer(peerConnection, undefined, "receiver"));
                         }
                     });
             });
@@ -347,8 +376,10 @@ async function sendData(object) {
     const packet = JSON.stringify(object);
     console.log(`rtc> Sending message: ${packet}`);
 
-    for (const dataChannel of dataChannels) {
-        dataChannel.send(packet);
+    for (const peer of peers) {
+        if (peer.isSendable()) {
+            peer.send(packet);
+        }
     }
 }
 
@@ -362,7 +393,7 @@ function recvData(peerConnection) { // {{{
             recvTime(message);
         });
 
-        dataChannels.push(dataChannelRecv);
+        peers.push(new Peer(peerConnection, dataChannelRecv, Peer.RECEIVER_TYPE));
     });
 } // }}}
 

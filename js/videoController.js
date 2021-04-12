@@ -1,4 +1,10 @@
 class Controller {
+    type;
+
+    thresh;
+
+    lowerThresh;
+
     // type : 'yt' for YouTube, 'msstream' for MS Stream, 'vimeo' for Vimeo
     constructor(type) {
         this.type = type;

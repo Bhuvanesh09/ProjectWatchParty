@@ -19,7 +19,8 @@
     }
   ],
   "permissions": [
-    "storage"
+    "storage",
+    "tabs"
   ],
   "browser_action": {
     "default_popup": "html/popup.html",

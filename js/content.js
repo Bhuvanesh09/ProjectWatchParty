@@ -7,6 +7,9 @@ setInterval(function () {
         action: "sendTime",
         time: controller.gettime(),
     }, function (_response) {
+        if (chrome.runtime.lastError) {
+            console.log("This went wrong", chrome.runtime.lastError);
+        }
     });
 }, 1000);
 

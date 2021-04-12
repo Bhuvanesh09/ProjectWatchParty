@@ -3,11 +3,15 @@ async function sendTime(time) {
 }
 
 async function recvTime(data) {
-    console.log(`>>> Chrome Messaging: ${data.time}`);
-    chrome.runtime.sendMessage({
-        action: "recvTime",
-        time: data.time,
-    }, function (_response) {
+    chrome.tabs.query({}, function (tabs) {
+        const message = {
+            action: "recvTime",
+            time: data.time,
+        };
+
+        for (const tab of tabs) {
+            chrome.tabs.sendMessage(tab.id, message);
+        }
     });
 }
 
