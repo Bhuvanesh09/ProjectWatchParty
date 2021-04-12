@@ -5,7 +5,7 @@ const controller = new Controller("yt");
 setInterval(function () {
     chrome.runtime.sendMessage({
         action: "sendTime",
-        time: controller.gettime(),
+        time: controller.getTime(),
     }, function (_response) {
         if (chrome.runtime.lastError) {
             console.log("This went wrong", chrome.runtime.lastError);

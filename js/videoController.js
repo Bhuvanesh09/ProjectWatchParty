@@ -1,4 +1,6 @@
 class Controller {
+    static NO_CHANGE_THRESH = 1;
+
     type;
 
     thresh;
@@ -12,13 +14,32 @@ class Controller {
         this.lowerThresh = 1;
     }
 
-    seek(time) {
-        // time : in seconds
+    getElement() {
         if (this.type === "yt") {
-            document.getElementsByClassName("html5-main-video")[0].currentTime = time;
+            return document.querySelector(".html5-main-video");
         }
+
         if (this.type === "msstream" || this.type === "vimeo") {
-            document.querySelector("video").currentTime = time;
+            return document.querySelector("video");
+        }
+
+        return null;
+    }
+
+    /**
+     * @param time {Number} time in seconds
+     */
+    seek(time) {
+        const currTime = this.getTime();
+
+        if (Math.abs(currTime - time) <= Controller.NO_CHANGE_THRESH) {
+            return;
+        }
+
+        const elm = this.getElement();
+
+        if (elm) {
+            elm.currentTime = time;
         }
     }
 
@@ -27,28 +48,21 @@ class Controller {
         if (!speed) {
             speed = 1.0;
         }
-        if (this.type === "yt") {
-            document.getElementsByClassName("html5-main-video")[0].playbackRate = speed;
-        }
-        if (this.type === "msstream" || this.type === "vimeo") {
-            document.querySelector("video").playbackRate = speed;
+        const elm = this.getElement();
+
+        if (elm) {
+            elm.playbackRate = speed;
         }
     }
 
-    gettime() {
-        if (this.type === "yt") {
-            return document.getElementsByClassName("html5-main-video")[0].currentTime;
-        }
-        if (this.type === "msstream" || this.type === "vimeo") {
-            return document.querySelector("video").currentTime;
-        }
-
-        return -1;
+    getTime() {
+        const elm = this.getElement();
+        return elm ? elm.currentTime : -1;
     }
 
     goto(time) {
         // give the target `time`
-        const curt = this.gettime();
+        const curt = this.getTime();
 
         if (Math.abs(time - curt) > this.thresh) {
             this.seek(time);
