@@ -20,7 +20,7 @@ chrome.runtime.onMessage.addListener(function ({
     switch (action) {
     case "recvTime":
         console.log(`Received timestamp at: ${others.time}`);
-        controller.seek(others.time);
+        controller.goto(others.time);
         sendResponse({ done: true });
         return true;
     default:

@@ -30,12 +30,6 @@ class Controller {
      * @param time {Number} time in seconds
      */
     seek(time) {
-        const currTime = this.getTime();
-
-        if (Math.abs(currTime - time) <= Controller.NO_CHANGE_THRESH) {
-            return;
-        }
-
         const elm = this.getElement();
 
         if (elm) {
@@ -68,6 +62,7 @@ class Controller {
             this.seek(time);
             return;
         }
+
         if (Math.abs(time - curt) < this.lowerThresh) {
             return;
         }
