@@ -36,6 +36,8 @@ class Controller {
         if (this.type === "msstream" || this.type === "vimeo") {
             return document.querySelector("video").currentTime;
         }
+
+        return -1;
     }
 
     goto(time) {
@@ -54,3 +56,5 @@ class Controller {
         this.speedup(value);
     }
 }
+
+window.Controller = Controller;

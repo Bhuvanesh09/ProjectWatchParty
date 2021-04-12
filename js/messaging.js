@@ -27,6 +27,9 @@ chrome.runtime.onMessage.addListener(function ({
                 sendResponse("success");
             });
         return true;
+    default:
+        console.log("Action unknown!");
     }
+
     return false;
 });

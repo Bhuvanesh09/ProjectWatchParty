@@ -13,6 +13,7 @@
         "https://*.youtube.com/watch*"
       ],
       "js": [
+        "js/videoController.js",
         "js/content.js"
       ]
     }

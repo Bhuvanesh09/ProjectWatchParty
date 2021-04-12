@@ -47,9 +47,7 @@ const ICEConfiguration = {
     peers = [],
     dataChannels = [];
 
-let peerConnection = null,
-    sendChannelIsReady = false,
-    getRoomId,
+let getRoomId,
     setRoomId,
     MY_NAME;
 
@@ -87,13 +85,9 @@ async function advertiseOfferForPeers(selfRef) { // {{{
     registerPeerConnectionListeners(peerConnection);
     console.debug("Create PeerConnection with configuration: ", ICEConfiguration);
 
-    sendChannelIsReady = false;
-    dataChannel = peerConnection.createDataChannel("TimestampDataChannel");
-    if (!sendChannelIsReady) {
-        dataChannel.addEventListener("open", (_event) => {
-            sendChannelIsReady = true;
-        });
-    }
+    const dataChannel = peerConnection.createDataChannel("TimestampDataChannel");
+    dataChannel.addEventListener("open", (_event) => {
+    });
     dataChannels.push(dataChannel);
 
     const callerCandidatesCollection = await selfRef.collection("callerCandidates");
@@ -350,12 +344,12 @@ async function joinRoomById(roomId) { // {{{
 } // }}}
 
 async function sendData(object) {
-    while (!sendChannelIsReady) {
-
-    }
-    packet = JSON.stringify(object);
+    const packet = JSON.stringify(object);
     console.log(`rtc> Sending message: ${packet}`);
-    dataChannel.send(packet);
+
+    for (const dataChannel of dataChannels) {
+        dataChannel.send(packet);
+    }
 }
 
 function recvData(peerConnection) { // {{{
@@ -436,6 +430,8 @@ chrome.runtime.onMessage.addListener(function ({
             }
         });
         return true;
+    default:
+        console.debug("Unknown action requested!");
     }
 
     return false;
