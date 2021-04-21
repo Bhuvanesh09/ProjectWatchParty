@@ -7,8 +7,20 @@
     "persistent": true,
     "page": "html/background.html"
   },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.youtube.com/watch*"
+      ],
+      "js": [
+        "js/videoController.js",
+        "js/content.js"
+      ]
+    }
+  ],
   "permissions": [
-    "storage"
+    "storage",
+    "tabs"
   ],
   "browser_action": {
     "default_popup": "html/popup.html",

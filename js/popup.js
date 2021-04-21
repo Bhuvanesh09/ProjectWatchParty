@@ -28,7 +28,7 @@ function joinRoom(_clickEvent) {
     statusElm.innerText = "Joining room...";
 
     const roomIdElm = document.getElementById("roomCode"),
-        roomId = roomIdElm.value;
+        roomId = roomIdElm.value.trim();
 
     chrome.runtime.sendMessage({
         action: "joinRoom",

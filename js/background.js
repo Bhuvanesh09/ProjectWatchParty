@@ -30,7 +30,38 @@ function initFirebaseApp() {
 
     firebaseAppInited = true;
 }
+
 // }}}
+
+class Peer {
+    static SENDER_TYPE = "sender";
+
+    static RECEIVER_TYPE = "receiver";
+
+    peer;
+
+    dataChannel;
+
+    type;
+
+    constructor(peerConnection, dataChannel, type) {
+        this.peer = peerConnection;
+        this.dataChannel = dataChannel;
+        this.type = type;
+    }
+
+    close() {
+        this.peer.close();
+    }
+
+    isSendable() {
+        return this.dataChannel.readyState === "open" && this.type === "sender";
+    }
+
+    send(packet) {
+        this.dataChannel.send(packet);
+    }
+}
 
 const ICEConfiguration = {
         iceServers: [
@@ -42,17 +73,16 @@ const ICEConfiguration = {
         ],
         iceCandidatePoolSize: 10,
     },
-    // TODO: link peerconnection and datachannel. maybe a "class"?
-    peers = [],
-    dataChannels = [];
+    peers = [];
 
-let interval = null,
-    getRoomId,
+let getRoomId,
     setRoomId,
     MY_NAME;
 
 // TODO: add an interface to allow the user to set this
-chrome.storage.local.get("username", (username) => { MY_NAME = username.username; });
+chrome.storage.local.get("username", (username) => {
+    MY_NAME = username.username;
+});
 
 { // TODO: fix: @sigmag {{{
     const ROOM_ID_KEY = "roomId";
@@ -82,7 +112,6 @@ async function advertiseOfferForPeers(selfRef) { // {{{
     const peerConnection = new RTCPeerConnection(ICEConfiguration);
     registerPeerConnectionListeners(peerConnection);
     console.debug("Create PeerConnection with configuration: ", ICEConfiguration);
-    initializeDataChannel(peerConnection);
 
     const callerCandidatesCollection = await selfRef.collection("callerCandidates");
     let iceCandidateSendCount = 0;
@@ -91,13 +120,19 @@ async function advertiseOfferForPeers(selfRef) { // {{{
     peerConnection.addEventListener("icecandidate", (event) => {
         if (!event.candidate) {
             console.debug("Got final candidate!");
-            callerCandidatesCollection.add({ type: "end", data: iceCandidateSendCount });
+            callerCandidatesCollection.add({
+                type: "end",
+                data: iceCandidateSendCount,
+            });
             return;
         }
 
         console.debug("Got candidate: ", event.candidate);
         iceCandidateSendCount++;
-        const payload = { type: "candidate", data: event.candidate.toJSON() };
+        const payload = {
+            type: "candidate",
+            data: event.candidate.toJSON(),
+        };
         callerCandidatesCollection.add(payload);
     });
     // }}}
@@ -130,8 +165,8 @@ async function advertiseOfferForPeers(selfRef) { // {{{
 
     // listening for remote ICE candidates {{{
     {
-    // to handle out of order messages
-    // this ensures that we always receive all candidates
+        // to handle out of order messages
+        // this ensures that we always receive all candidates
         let iceCandidateReceivedCount = 0,
             expectedCandidateCount = Number.POSITIVE_INFINITY;
         selfRef.collection("calleeCandidates")
@@ -144,7 +179,10 @@ async function advertiseOfferForPeers(selfRef) { // {{{
                 snapshot.docChanges()
                     .forEach(async (change) => {
                         if (change.type === "added") {
-                            const { type, data } = change.doc.data();
+                            const {
+                                type,
+                                data,
+                            } = change.doc.data();
 
                             if (type === "end") {
                                 expectedCandidateCount = data;
@@ -156,10 +194,17 @@ async function advertiseOfferForPeers(selfRef) { // {{{
                         }
 
                         if (expectedCandidateCount === iceCandidateReceivedCount) {
-                            peers.push(peerConnection);
+                            const dataChannel = peerConnection.createDataChannel("TimestampDataChannel");
+                            dataChannel.addEventListener("open", (_event) => {
+                                console.log(_event, "Datachannel opened");
+                            });
+
+                            peers.push(new Peer(peerConnection, dataChannel, Peer.SENDER_TYPE));
+
                             advertiseOfferForPeers(selfRef);
 
-                            const calleeCandidates = await selfRef.collection("calleeCandidates").get();
+                            const calleeCandidates = await selfRef.collection("calleeCandidates")
+                                .get();
 
                             // invalidate this snapshot listener since this peer connection
                             // has been established successfully.
@@ -179,14 +224,17 @@ async function advertiseOfferForPeers(selfRef) { // {{{
 async function createRoom() { // {{{
     console.log("MY_NAME", MY_NAME);
 
-    const roomRef = firebase.firestore().collection("rooms").doc();
+    const roomRef = firebase.firestore()
+        .collection("rooms")
+        .doc();
     // firestore doesnt like empty documents.
     // fill dummy data to actually create the document
     // [firestore web ui will display the document name in italics if it doesn't actually exist]
     await roomRef.set({ exists: true });
 
     // TODO: dup [MARKER:1]
-    const selfRef = await roomRef.collection("peers").doc(MY_NAME);
+    const selfRef = await roomRef.collection("peers")
+        .doc(MY_NAME);
 
     advertiseOfferForPeers(selfRef);
 
@@ -216,20 +264,6 @@ function registerPeerConnectionListeners(peerConnection) { // {{{
     });
 } // }}}
 
-function initializeDataChannel(peerConnection) { // {{{
-    const dataChannel = peerConnection.createDataChannel("TimestampDataChannel");
-    dataChannel.addEventListener("open", (_event) => {
-        if (interval == null) {
-            interval = setInterval(() => {
-                console.log("Sending Data from Server");
-                dataChannel.send(`PICA-PIKA from ${MY_NAME}`);
-            }, 2000);
-        }
-    });
-
-    dataChannels.push(dataChannel);
-} // }}}
-
 async function processOffer(peerRef) { // {{{
     console.debug("Create PeerConnection with configuration: ", ICEConfiguration);
     const peerConnection = new RTCPeerConnection(ICEConfiguration);
@@ -244,13 +278,19 @@ async function processOffer(peerRef) { // {{{
     peerConnection.addEventListener("icecandidate", (event) => {
         if (!event.candidate) {
             console.debug("Got final candidate!");
-            calleeCandidatesCollection.add({ type: "end", data: iceCandidateSendCount });
+            calleeCandidatesCollection.add({
+                type: "end",
+                data: iceCandidateSendCount,
+            });
             return;
         }
 
         console.debug("Got candidate: ", event.candidate);
         iceCandidateSendCount++;
-        const payload = { type: "candidate", data: event.candidate.toJSON() };
+        const payload = {
+            type: "candidate",
+            data: event.candidate.toJSON(),
+        };
         calleeCandidatesCollection.add(payload);
     });
     // }}}
@@ -275,8 +315,8 @@ async function processOffer(peerRef) { // {{{
 
     // listening for remote ICE candidates {{{
     {
-    // to handle out of order messages
-    // this ensures that we always receive all candidates
+        // to handle out of order messages
+        // this ensures that we always receive all candidates
         let iceCandidateReceivedCount = 0,
             expectedCandidateCount = Number.POSITIVE_INFINITY;
         peerRef.collection("callerCandidates")
@@ -284,7 +324,10 @@ async function processOffer(peerRef) { // {{{
                 snapshot.docChanges()
                     .forEach(async (change) => {
                         if (change.type === "added") {
-                            const { type, data } = change.doc.data();
+                            const {
+                                type,
+                                data,
+                            } = change.doc.data();
 
                             if (type === "end") {
                                 expectedCandidateCount = data;
@@ -296,7 +339,8 @@ async function processOffer(peerRef) { // {{{
                         }
 
                         if (expectedCandidateCount === iceCandidateReceivedCount) {
-                            peers.push(peerConnection);
+                            // TODO: undefined datachannel :/
+                            // peers.push(new Peer(peerConnection, undefined, "receiver"));
                         }
                     });
             });
@@ -307,9 +351,11 @@ async function processOffer(peerRef) { // {{{
 async function joinRoomById(roomId) { // {{{
     console.log(`Joining room: '${roomId}'`);
     const db = await firebase.firestore(),
-        roomRef = await db.collection("rooms").doc(roomId),
+        roomRef = await db.collection("rooms")
+            .doc(roomId),
         roomSnapshot = await roomRef.get(),
-        peerSnapshot = await roomRef.collection("peers").get();
+        peerSnapshot = await roomRef.collection("peers")
+            .get();
     console.log("Got room? ", roomSnapshot.exists);
 
     if (!roomSnapshot.exists) {
@@ -317,24 +363,38 @@ async function joinRoomById(roomId) { // {{{
     }
     setRoomId(roomId);
 
-    peerSnapshot.forEach(async (peer) => { await processOffer(peer.ref); });
+    peerSnapshot.forEach(async (peer) => {
+        await processOffer(peer.ref);
+    });
 
     // TODO: dup [MARKER:1]
-    const selfRef = await roomRef.collection("peers").doc(MY_NAME);
+    const selfRef = await roomRef.collection("peers")
+        .doc(MY_NAME);
     advertiseOfferForPeers(selfRef);
 } // }}}
+
+async function sendData(object) {
+    const packet = JSON.stringify(object);
+    console.log(`rtc> Sending message: ${packet}`);
+
+    for (const peer of peers) {
+        if (peer.isSendable()) {
+            peer.send(packet);
+        }
+    }
+}
 
 function recvData(peerConnection) { // {{{
     peerConnection.addEventListener("datachannel", (event) => {
         const dataChannelRecv = event.channel;
 
         dataChannelRecv.addEventListener("message", (eventMessage) => {
-            console.log("Receiving Data on Client");
-            const message = eventMessage.data;
-            console.log(message);
+            console.log(`rtc> Receiving Message: ${eventMessage.data}`);
+            const message = JSON.parse(eventMessage.data);
+            recvTime(message);
         });
 
-        dataChannels.push(dataChannelRecv);
+        peers.push(new Peer(peerConnection, dataChannelRecv, Peer.RECEIVER_TYPE));
     });
 } // }}}
 
@@ -347,14 +407,19 @@ function hangUp(callback) { // {{{
     getRoomId(async (roomId) => {
         if (roomId) {
             const db = firebase.firestore(),
-                selfRef = db.collection("rooms").doc(roomId).collection("peers").doc(MY_NAME),
-                calleeCandidates = await selfRef.collection("calleeCandidates").get();
+                selfRef = db.collection("rooms")
+                    .doc(roomId)
+                    .collection("peers")
+                    .doc(MY_NAME),
+                calleeCandidates = await selfRef.collection("calleeCandidates")
+                    .get();
 
             calleeCandidates.forEach(async (candidate) => {
                 await candidate.ref.delete();
             });
 
-            const callerCandidates = await selfRef.collection("callerCandidates").get();
+            const callerCandidates = await selfRef.collection("callerCandidates")
+                .get();
             callerCandidates.forEach(async (candidate) => {
                 await candidate.ref.delete();
             });
@@ -396,10 +461,9 @@ chrome.runtime.onMessage.addListener(function ({
                 sendResponse("Errored!");
             }
         });
-
         return true;
     default:
-        console.log("Invalid input");
+        console.debug("Unknown action requested!");
     }
 
     return false;
