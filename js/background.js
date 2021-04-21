@@ -56,7 +56,7 @@ class Peer { // {{{
     }
 
     isSendable() {
-        return this.dataChannel.readyState === "open" && this.type === "sender";
+        return this.dataChannel.readyState === "open" && this.type === Peer.SENDER_TYPE;
     }
 
     getDescription() {
@@ -91,7 +91,6 @@ chrome.storage.local.get("username", (username) => {
     MY_NAME = username.username;
 });
 
-
 { // TODO: fix: @sigmag {{{
     const ROOM_ID_KEY = "roomId";
 
@@ -116,27 +115,14 @@ chrome.storage.local.get("username", (username) => {
     };
 } // }}}
 
-async function advertiseOfferForPeers(selfRef) { // {{{
-    const peerConnection = new RTCPeerConnection(ICEConfiguration);
-    registerPeerConnectionListeners(peerConnection);
-    console.debug("Create PeerConnection with configuration: ", ICEConfiguration);
-
-    const dataChannel = peerConnection.createDataChannel("TimestampDataChannel");
-    dataChannel.addEventListener("message", (_event) => {
-        console.log("MESSAGE:", _event.data);
-    })
-    dataChannel.addEventListener("open", (_event) => {
-        console.log(_event, "Datachannel opened");
-    });
-
-    const callerCandidatesCollection = await selfRef.collection("callerCandidates");
+function iceCandidateCollector(peerConnection, candidateCollection) {
     let iceCandidateSendCount = 0;
 
     // collecting ICE candidates {{{
     peerConnection.addEventListener("icecandidate", (event) => {
         if (!event.candidate) {
             console.debug("Got final candidate!");
-            callerCandidatesCollection.add({
+            candidateCollection.add({
                 type: "end",
                 data: iceCandidateSendCount,
             });
@@ -149,9 +135,18 @@ async function advertiseOfferForPeers(selfRef) { // {{{
             type: "candidate",
             data: event.candidate.toJSON(),
         };
-        callerCandidatesCollection.add(payload);
+        candidateCollection.add(payload);
     });
-    // }}}
+}
+
+async function advertiseOfferForPeers(selfRef) { // {{{
+    const peerConnection = new RTCPeerConnection(ICEConfiguration);
+    registerPeerConnectionListeners(peerConnection);
+    console.debug("Create PeerConnection with configuration: ", ICEConfiguration);
+
+    const callerCandidatesCollection = await selfRef.collection("callerCandidates");
+
+    iceCandidateCollector(peerConnection, callerCandidatesCollection);
 
     // creating an offer {{{
     const offer = await peerConnection.createOffer();
@@ -286,27 +281,7 @@ async function processOffer(peerRef) { // {{{
 
     // collecting ICE candidates {{{
     const calleeCandidatesCollection = peerRef.collection("calleeCandidates");
-    let iceCandidateSendCount = 0;
-
-    peerConnection.addEventListener("icecandidate", (event) => {
-        if (!event.candidate) {
-            console.debug("Got final candidate!");
-            calleeCandidatesCollection.add({
-                type: "end",
-                data: iceCandidateSendCount,
-            });
-            return;
-        }
-
-        console.debug("Got candidate: ", event.candidate);
-        iceCandidateSendCount++;
-        const payload = {
-            type: "candidate",
-            data: event.candidate.toJSON(),
-        };
-        calleeCandidatesCollection.add(payload);
-    });
-    // }}}
+    iceCandidateCollector(peerConnection, calleeCandidatesCollection);
 
     // creating SDP answer {{{
     const peerSnapshot = await peerRef.get(),
