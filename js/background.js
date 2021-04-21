@@ -82,38 +82,36 @@ const ICEConfiguration = {
     },
     peers = [];
 
-let getRoomId,
-    setRoomId,
-    MY_NAME;
+let MY_NAME;
 
 // TODO: add an interface to allow the user to set this
 chrome.storage.local.get("username", (username) => {
     MY_NAME = username.username;
 });
 
-{ // TODO: fix: @sigmag {{{
-    const ROOM_ID_KEY = "roomId";
+class ROOM_ID {
+    ROOM_ID_KEY = "roomId";
 
-    getRoomId = (callback) => {
-        chrome.storage.local.get([ROOM_ID_KEY], function (result) {
+    static get(callback) {
+        chrome.storage.local.get([ROOM_ID.ROOM_ID_KEY], function (result) {
             let joinedRoomId;
-            if (typeof result[ROOM_ID_KEY] === "undefined") {
-                joinedRoomId = result[ROOM_ID_KEY];
+            if (typeof result[ROOM_ID.ROOM_ID_KEY] === "undefined") {
+                joinedRoomId = result[ROOM_ID.ROOM_ID_KEY];
             } else {
                 joinedRoomId = undefined;
             }
             callback(joinedRoomId);
         });
-    };
+    }
 
-    setRoomId = (value) => {
+    static set(value) {
         chrome.storage.local.set({ ROOM_ID_KEY: value }, function () {
             if (chrome.runtime.lastError) {
                 console.log("Whoops! What went wrong?", chrome.runtime.lastError);
             }
         });
-    };
-} // }}}
+    }
+}
 
 function iceCandidateCollector(peerConnection, candidateCollection) {
     let iceCandidateSendCount = 0;
@@ -246,7 +244,7 @@ async function createRoom() { // {{{
 
     advertiseOfferForPeers(selfRef);
 
-    setRoomId(roomRef.id);
+    ROOM_ID.set(roomRef.id);
     return roomRef.id;
 } // }}}
 
@@ -339,7 +337,7 @@ async function joinRoomById(roomId) { // {{{
     if (!roomSnapshot.exists) {
         return;
     }
-    setRoomId(roomId);
+    ROOM_ID.set(roomId);
 
     peerSnapshot.forEach(async (peer) => {
         await processOffer(peer.ref);
@@ -361,14 +359,33 @@ async function sendData(object) {
     }
 }
 
+// TODO
+async function requestControllerAccess(_callback) {
+    sendData({ action: "controller" });
+}
+
 function recvData(peerConnection) { // {{{
     peerConnection.addEventListener("datachannel", (event) => {
         const dataChannelRecv = event.channel;
 
         dataChannelRecv.addEventListener("message", (eventMessage) => {
             console.log(`rtc> Received Message: ${eventMessage.data}`);
-            const message = JSON.parse(eventMessage.data);
-            recvTime(message);
+
+            const {
+                action,
+                ...message
+            } = JSON.parse(eventMessage.data);
+
+            switch (action) {
+            case "time":
+                recvTime(message);
+                break;
+            case "controller":
+                controllerRequested(message);
+                break;
+            default:
+                console.debug(`Action ${action} not matched`);
+            }
         });
 
         peers.push(new Peer(peerConnection, dataChannelRecv, Peer.RECEIVER_TYPE));
@@ -381,7 +398,7 @@ function hangUp(callback) { // {{{
     }
 
     // remove self from peers on hangup {{{
-    getRoomId(async (roomId) => {
+    ROOM_ID.get(async (roomId) => {
         if (roomId) {
             const db = firebase.firestore(),
                 selfRef = db.collection("rooms")
@@ -437,6 +454,11 @@ chrome.runtime.onMessage.addListener(function ({
             } else {
                 sendResponse("Errored!");
             }
+        });
+        return true;
+    case "requestController":
+        requestControllerAccess((status) => {
+            sendResponse(status);
         });
         return true;
     default:

@@ -1,5 +1,12 @@
 async function sendTime(time) {
-    sendData({ time });
+    sendData({
+        time,
+        action: "synctime",
+    });
+}
+
+async function controllerRequested(message) {
+    console.debug(`Received request to controller: ${message}`);
 }
 
 async function recvTime(data) {

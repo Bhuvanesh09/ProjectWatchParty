@@ -5,27 +5,36 @@
     <link rel="stylesheet" href="../css/button.css">
     <link rel="stylesheet" href="../css/syncBar.css">
     <link rel="stylesheet" href="../css/bootstrap.min.css" media="all">
+
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script src="../js/bootstrap.min.js"></script>
+    <script src="../js/popup.js"></script>
 </head>
 
 <body>
-<div id="controlsDiv">
-    <button id="createRoom">Create Room</button>
-    <label id="createdRoomId"></label>
-    <button id="joinRoom">Join Room</button>
-    <div>
-        <label for="roomCode">Code: </label>
-        <input id="roomCode" type="text"/>
+<div id="controlsDiv" class="container-fluid">
+    <div class="row m-2">
+        <button class="btn btn-primary" id="createRoom">Create Room</button>
+        <label id="createdRoomId"></label>
     </div>
-    <button id="hangUp">Terminate Session</button>
-</div>
+    <div class="row m-2">
+        <button id="joinRoom" class="btn btn-primary">Join Room</button>
+        <div>
+            <label for="roomCode">Code: </label>
+            <input id="roomCode" type="text"/>
+        </div>
+    </div>
+    <div class="row m-2">
+        <button id="request-controller" class="btn btn-primary">Request controller</button>
+    </div>
+    <div class="row m-2">
+        <button id="hangUp" class="btn btn-primary">Terminate Session</button>
+    </div>
+<!--</div>-->
 
 <div id="syncBar">
-    
-</div>
 
-<script src="../js/jquery-3.6.0.min.js"></script>
-<script src="../js/bootstrap.min.js"></script>
-<script src="../js/popup.js"></script>
+</div>
 </body>
 
 </html>

@@ -12,19 +12,23 @@ function initControls() {
 
     const hangUpButton = document.getElementById("hangUp");
     hangUpButton.addEventListener("click", exitRoom);
+
+    const requestContBtn = document.getElementById("request-controller");
+    requestContBtn.addEventListener("click", requestController);
 }
 
 function initSyncBar(pplData) {
     // Init for the progress bar.
-    //const bar = $("#syncBar");
+    // const bar = $("#syncBar");
     const bar = document.getElementById("syncBar");
-    
-    barStringHtml = `<div class="progress" id="netProgress">`;
 
-    for(name in pplData){
-        if(name === "master") continue;
-        else {
-            barStringHtml +=  `
+    let barStringHtml = "<div class=\"progress\" id=\"netProgress\">";
+
+    for (const name in pplData) {
+        if (name === "master") {
+            continue;
+        } else {
+            barStringHtml += `
             <div class="bar-step" id="${name}_barstep">
                 <div class="label-line"></div>
                 <div class="label-txt">${name}</div>
@@ -34,26 +38,25 @@ function initSyncBar(pplData) {
     }
 
     barStringHtml += `
-    <div class="progress-bar progress-bar-success" id="bar" >${pplData["master"]}%</div>
+    <div class="progress-bar progress-bar-success" id="bar" >${pplData.master}%</div>
     `; // Master's Done bar
-    barStringHtml += `</div>`; //Closing the progress div
+    barStringHtml += "</div>"; // Closing the progress div
 
     document.getElementById("syncBar").innerHTML = barStringHtml;
 
     updateProgress(pplData);
-    return ;
 }
 
-function updateProgress(pplData){
-    document.getElementById("bar").style.width = `${pplData["master"]}%`;
-    document.getElementById("bar").innerText = `${pplData["master"]}%`;
-    for(name in pplData){
-        if(name === "master") continue;
-        else {
-            document.getElementById(`${name}_barstep`).style.left = `${pplData[name]}%`
+function updateProgress(pplData) {
+    document.getElementById("bar").style.width = `${pplData.master}%`;
+    document.getElementById("bar").innerText = `${pplData.master}%`;
+    for (const name in pplData) {
+        if (name === "master") {
+            continue;
+        } else {
+            document.getElementById(`${name}_barstep`).style.left = `${pplData[name]}%`;
         }
     }
-
 }
 
 function createRoom(_clickEvent) {
@@ -70,6 +73,17 @@ function createRoom(_clickEvent) {
     });
 }
 
+function requestController(_clickEvent) {
+    chrome.runtime.sendMessage({ action: "requestController" }, function (ret) {
+        if (chrome.runtime.lastError) {
+            console.log("ERROR", chrome.runtime.lastError);
+            console.debug("bleh");
+        } else {
+            console.debug(`:O ${ret}`);
+        }
+    });
+}
+
 function joinRoom(_clickEvent) {
     const statusElm = document.getElementById("createdRoomId");
     statusElm.innerText = "Joining room...";
@@ -77,7 +91,7 @@ function joinRoom(_clickEvent) {
     const roomIdElm = document.getElementById("roomCode"),
         roomId = roomIdElm.value.trim();
 
-    if(roomId === ""){
+    if (roomId === "") {
         statusElm.innerText = "Please enter the Room ID you want to join.";
         return;
     }
@@ -94,8 +108,7 @@ function joinRoom(_clickEvent) {
         }
     });
 
-
-    // Will get 
+    // Will get
 }
 
 function exitRoom(_clickEvent) {
@@ -113,26 +126,35 @@ function exitRoom(_clickEvent) {
         } else {
             statusElm.innerText = status;
         }
-     });
-};
+    });
+}
 
+// TODO: integrate progress bar with actual time values
 function testProgressBar() {
-    var pplDat = { "master" : 50,
-                    "A" : 20 ,
-                    "B" : 60 
-                }
+    const pplDat = {
+        master: 50,
+        A: 20,
+        B: 60,
+    };
 
     initSyncBar(pplDat);
 
-    var event = setInterval(function(){ pplDat["master"] += 2; 
-                            pplDat["A"] += 3;
-                            pplDat["B"] += 1;
-                            updateProgress(pplDat);
-                            
-                            if(pplDat["master"]>=100) {
-                                window.clearInterval(event);
-                            }
-                          }, 200);
+    const event = setInterval(function () {
+        pplDat.master += 2;
+        pplDat.A += 3;
+        pplDat.B += 1;
+        updateProgress(pplDat);
+
+        if (pplDat.master >= 100) {
+            window.clearInterval(event);
+        }
+    }, 200);
 }
 
-init();
+(function checkInit() {
+    if (document.readyState === "complete") {
+        init();
+    } else {
+        setTimeout(checkInit, 100);
+    }
+}());

@@ -37,6 +37,7 @@
       "error",
       "consecutive"
     ],
+    "no-console": "off",
     "prefer-const": "warn",
     "no-global-assign": "warn",
     "no-tabs": "warn",
