@@ -71,7 +71,6 @@ const ICEConfiguration = {
                 credential: "5xXJa5rwSafFTpjQEWDdPfRSdFaeKmIy",
             },
         ],
-        iceCandidatePoolSize: 10,
     },
     peers = [];
 
@@ -83,6 +82,15 @@ let getRoomId,
 chrome.storage.local.get("username", (username) => {
     MY_NAME = username.username;
 });
+
+
+async function openCall(pc) {
+  const gumStream = await navigator.mediaDevices.getUserMedia(
+                          {video: true, audio: true});
+  for (const track of gumStream.getTracks()) {
+    pc.addTrack(track);
+  }
+}
 
 { // TODO: fix: @sigmag {{{
     const ROOM_ID_KEY = "roomId";
@@ -138,7 +146,7 @@ async function advertiseOfferForPeers(selfRef) { // {{{
     // }}}
 
     // creating an offer {{{
-    const offer = await peerConnection.createOffer();
+    const offer = await peerConnection.createOffer({"offerToReceiveAudio": true, "offerToReceiveVideo": true});
     await peerConnection.setLocalDescription(offer);
     console.debug("Created offer:", offer);
 
@@ -184,8 +192,11 @@ async function advertiseOfferForPeers(selfRef) { // {{{
                                 data,
                             } = change.doc.data();
 
+                            console.log("CURRENT COUNT:", iceCandidateReceivedCount);
+
                             if (type === "end") {
                                 expectedCandidateCount = data;
+                                console.log("GOT FINAL COUNT:", data, typeof data);
                             } else {
                                 console.debug(`new remote ICE candidate: ${JSON.stringify(data)}`);
                                 await peerConnection.addIceCandidate(new RTCIceCandidate(data));
@@ -194,12 +205,20 @@ async function advertiseOfferForPeers(selfRef) { // {{{
                         }
 
                         if (expectedCandidateCount === iceCandidateReceivedCount) {
+                            openCall(peerConnection);
+                            console.debug("Collected all remote ice candidates");
                             const dataChannel = peerConnection.createDataChannel("TimestampDataChannel");
+                            dataChannel.addEventListener("message", (_event) => {
+                                console.log("MESSAGE:", _event.data);
+                            })
                             dataChannel.addEventListener("open", (_event) => {
                                 console.log(_event, "Datachannel opened");
                             });
 
-                            peers.push(new Peer(peerConnection, dataChannel, Peer.SENDER_TYPE));
+                            console.debug("before peer.push", peers.length);
+                            let newPeer = new Peer(peerConnection, dataChannel, Peer.SENDER_TYPE);
+                            peers.push(newPeer);
+                            console.debug("after peer.push", peers.length, newPeer);
 
                             advertiseOfferForPeers(selfRef);
 
@@ -269,8 +288,6 @@ async function processOffer(peerRef) { // {{{
     const peerConnection = new RTCPeerConnection(ICEConfiguration);
     registerPeerConnectionListeners(peerConnection);
 
-    recvData(peerConnection);
-
     // collecting ICE candidates {{{
     const calleeCandidatesCollection = peerRef.collection("calleeCandidates");
     let iceCandidateSendCount = 0;
@@ -300,7 +317,7 @@ async function processOffer(peerRef) { // {{{
         { offer } = peerSnapshot.data();
     console.debug("Got offer:", offer);
     await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-    const answer = await peerConnection.createAnswer();
+    const answer = await peerConnection.createAnswer({"offerToReceiveAudio": true, "offerToReceiveVideo": true});
     console.debug("Created answer:", answer);
     await peerConnection.setLocalDescription(answer);
 
@@ -331,6 +348,7 @@ async function processOffer(peerRef) { // {{{
 
                             if (type === "end") {
                                 expectedCandidateCount = data;
+                                console.log("GOT FINAL COUNT:", data, typeof data);
                             } else {
                                 console.debug(`new remote ICE candidate: ${JSON.stringify(data)}`);
                                 await peerConnection.addIceCandidate(new RTCIceCandidate(data));
@@ -339,8 +357,7 @@ async function processOffer(peerRef) { // {{{
                         }
 
                         if (expectedCandidateCount === iceCandidateReceivedCount) {
-                            // TODO: undefined datachannel :/
-                            // peers.push(new Peer(peerConnection, undefined, "receiver"));
+                            recvData(peerConnection);
                         }
                     });
             });
