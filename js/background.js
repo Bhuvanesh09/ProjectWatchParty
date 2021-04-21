@@ -228,8 +228,6 @@ async function advertiseOfferForPeers(selfRef) { // {{{
 } // }}}
 
 async function createRoom() { // {{{
-    console.log("MY_NAME", MY_NAME);
-
     const roomRef = firebase.firestore()
         .collection("rooms")
         .doc();

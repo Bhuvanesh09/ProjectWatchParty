@@ -79,7 +79,7 @@ function requestController(_clickEvent) {
             console.log("ERROR", chrome.runtime.lastError);
             console.debug("bleh");
         } else {
-            console.debug(`:O ${ret}`);
+            console.debug(`Response: ${ret}`);
         }
     });
 }
