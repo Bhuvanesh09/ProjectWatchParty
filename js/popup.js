@@ -42,6 +42,9 @@ function initControls() {
 
     const requestContBtn = document.getElementById("request-controller");
     requestContBtn.addEventListener("click", requestController);
+
+    const openChatBtn = document.getElementById("openChatWindow");
+    openChatBtn.addEventListener("click", openChatWindow);
 }
 
 function initSyncBar(pplData) {
@@ -86,6 +89,12 @@ function updateProgress(pplData) {
     }
 }
 
+function openChatWindow(_clickEvent){
+    chrome.windows.create({
+    url: chrome.runtime.getURL("../html/chat.html"),
+    type: "popup"
+  });
+}
 function createRoom(_clickEvent) {
     const roomIdElm = document.getElementById("createdRoomId");
     roomIdElm.innerText = "Creating room...";
