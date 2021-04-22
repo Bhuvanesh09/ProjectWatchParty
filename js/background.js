@@ -39,34 +39,39 @@ class Peer { // {{{
 
     static RECEIVER_TYPE = "receiver";
 
-    peer;
+    peerConnection;
 
     dataChannel;
 
     type;
 
-    constructor(peerConnection, dataChannel, type) {
-        this.peer = peerConnection;
+    peerName;
+
+    constructor(peerName, peerConnection, dataChannel, type) {
+        this.peerName = peerName;
+        this.peerConnection = peerConnection;
         this.dataChannel = dataChannel;
         this.type = type;
     }
 
     close() {
-        this.peer.close();
+        this.peerConnection.close();
     }
 
     isSendable() {
-        return this.dataChannel.readyState === "open" && this.type === "sender";
+        return this.dataChannel.readyState === "open" && this.type === Peer.SENDER_TYPE;
     }
 
     getDescription() {
-        const desc = this.peer.currentRemoteDescription;
+        return this.peerName;
 
-        return `${desc.type} ${desc.sdp}`;
+        // const desc = this.peer.currentRemoteDescription;
+        //
+        // return `${desc.type} ${desc.sdp}`;
     }
 
     send(packet) {
-        console.log(`rtc> Sending message: ${packet}`);
+        console.log(`rtc> Sending message: ${packet} to ${this.getDescription()}`);
         this.dataChannel.send(packet);
     }
 } // }}}
@@ -82,61 +87,45 @@ const ICEConfiguration = {
     },
     peers = [];
 
-let getRoomId,
-    setRoomId,
-    MY_NAME;
+let MY_NAME;
 
 // TODO: add an interface to allow the user to set this
 chrome.storage.local.get("username", (username) => {
     MY_NAME = username.username;
 });
 
+class ROOM_ID {
+    ROOM_ID_KEY = "roomId";
 
-{ // TODO: fix: @sigmag {{{
-    const ROOM_ID_KEY = "roomId";
-
-    getRoomId = (callback) => {
-        chrome.storage.local.get([ROOM_ID_KEY], function (result) {
+    static get(callback) {
+        chrome.storage.local.get([ROOM_ID.ROOM_ID_KEY], function (result) {
             let joinedRoomId;
-            if (typeof result[ROOM_ID_KEY] === "undefined") {
-                joinedRoomId = result[ROOM_ID_KEY];
+            if (typeof result[ROOM_ID.ROOM_ID_KEY] === "undefined") {
+                joinedRoomId = result[ROOM_ID.ROOM_ID_KEY];
             } else {
                 joinedRoomId = undefined;
             }
             callback(joinedRoomId);
         });
-    };
+    }
 
-    setRoomId = (value) => {
+    static set(value) {
         chrome.storage.local.set({ ROOM_ID_KEY: value }, function () {
             if (chrome.runtime.lastError) {
                 console.log("Whoops! What went wrong?", chrome.runtime.lastError);
             }
         });
-    };
-} // }}}
+    }
+}
 
-async function advertiseOfferForPeers(selfRef) { // {{{
-    const peerConnection = new RTCPeerConnection(ICEConfiguration);
-    registerPeerConnectionListeners(peerConnection);
-    console.debug("Create PeerConnection with configuration: ", ICEConfiguration);
-
-    const dataChannel = peerConnection.createDataChannel("TimestampDataChannel");
-    dataChannel.addEventListener("message", (_event) => {
-        console.log("MESSAGE:", _event.data);
-    })
-    dataChannel.addEventListener("open", (_event) => {
-        console.log(_event, "Datachannel opened");
-    });
-
-    const callerCandidatesCollection = await selfRef.collection("callerCandidates");
+function iceCandidateCollector(peerConnection, candidateCollection) {
     let iceCandidateSendCount = 0;
 
     // collecting ICE candidates {{{
     peerConnection.addEventListener("icecandidate", (event) => {
         if (!event.candidate) {
             console.debug("Got final candidate!");
-            callerCandidatesCollection.add({
+            candidateCollection.add({
                 type: "end",
                 data: iceCandidateSendCount,
             });
@@ -149,9 +138,26 @@ async function advertiseOfferForPeers(selfRef) { // {{{
             type: "candidate",
             data: event.candidate.toJSON(),
         };
-        callerCandidatesCollection.add(payload);
+        candidateCollection.add(payload);
     });
-    // }}}
+}
+
+async function advertiseOfferForPeers(selfRef) { // {{{
+    const peerConnection = new RTCPeerConnection(ICEConfiguration);
+    registerPeerConnectionListeners(peerConnection);
+    console.debug("Create PeerConnection with configuration: ", ICEConfiguration);
+
+    const dataChannel = peerConnection.createDataChannel("TimestampDataChannel");
+    dataChannel.addEventListener("message", (_event) => {
+        console.log("MESSAGE: ", _event.data);
+    });
+    dataChannel.addEventListener("open", (_event) => {
+        console.log(_event, "Datachannel opened");
+    });
+
+    const callerCandidatesCollection = await selfRef.collection("callerCandidates");
+
+    iceCandidateCollector(peerConnection, callerCandidatesCollection);
 
     // creating an offer {{{
     const offer = await peerConnection.createOffer();
@@ -163,16 +169,20 @@ async function advertiseOfferForPeers(selfRef) { // {{{
             type: offer.type,
             sdp: offer.sdp,
         },
+        peerName: MY_NAME,
     };
 
     await selfRef.set(roomWithOffer);
     // }}}
 
+    let remotePeerName = null;
+
     // listening for remote session description {{{
     selfRef.onSnapshot(async (snapshot) => {
         const data = snapshot.data();
         if (!peerConnection.currentRemoteDescription && data && data.answer) {
-            console.debug("Got remote description: ", data.answer);
+            remotePeerName = data.peerName;
+            console.debug("Got remote description: ", data.answer, "from", remotePeerName);
             const rtcSessionDescription = new RTCSessionDescription(data.answer);
             await peerConnection.setRemoteDescription(rtcSessionDescription);
         }
@@ -211,7 +221,7 @@ async function advertiseOfferForPeers(selfRef) { // {{{
 
                         if (expectedCandidateCount === iceCandidateReceivedCount) {
                             console.debug("Collected all remote ice candidates");
-                            let newPeer = new Peer(peerConnection, dataChannel, Peer.SENDER_TYPE);
+                            const newPeer = new Peer(remotePeerName, peerConnection, dataChannel, Peer.SENDER_TYPE);
                             peers.push(newPeer);
 
                             advertiseOfferForPeers(selfRef);
@@ -235,8 +245,6 @@ async function advertiseOfferForPeers(selfRef) { // {{{
 } // }}}
 
 async function createRoom() { // {{{
-    console.log("MY_NAME", MY_NAME);
-
     const roomRef = firebase.firestore()
         .collection("rooms")
         .doc();
@@ -251,7 +259,7 @@ async function createRoom() { // {{{
 
     advertiseOfferForPeers(selfRef);
 
-    setRoomId(roomRef.id);
+    ROOM_ID.set(roomRef.id);
     return roomRef.id;
 } // }}}
 
@@ -282,36 +290,21 @@ async function processOffer(peerRef) { // {{{
     const peerConnection = new RTCPeerConnection(ICEConfiguration);
     registerPeerConnectionListeners(peerConnection);
 
-    recvData(peerConnection);
-
     // collecting ICE candidates {{{
     const calleeCandidatesCollection = peerRef.collection("calleeCandidates");
-    let iceCandidateSendCount = 0;
-
-    peerConnection.addEventListener("icecandidate", (event) => {
-        if (!event.candidate) {
-            console.debug("Got final candidate!");
-            calleeCandidatesCollection.add({
-                type: "end",
-                data: iceCandidateSendCount,
-            });
-            return;
-        }
-
-        console.debug("Got candidate: ", event.candidate);
-        iceCandidateSendCount++;
-        const payload = {
-            type: "candidate",
-            data: event.candidate.toJSON(),
-        };
-        calleeCandidatesCollection.add(payload);
-    });
-    // }}}
+    iceCandidateCollector(peerConnection, calleeCandidatesCollection);
 
     // creating SDP answer {{{
     const peerSnapshot = await peerRef.get(),
-        { offer } = peerSnapshot.data();
-    console.debug("Got offer:", offer);
+        {
+            offer,
+            peerName,
+        } = peerSnapshot.data();
+
+    console.debug("Got offer:", offer, "from", peerName);
+
+    recvData(peerConnection, peerName);
+
     await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
     const answer = await peerConnection.createAnswer();
     console.debug("Created answer:", answer);
@@ -322,32 +315,31 @@ async function processOffer(peerRef) { // {{{
             type: answer.type,
             sdp: answer.sdp,
         },
+        peerName: MY_NAME,
     };
     await peerRef.update(roomWithAnswer);
     // }}}
 
     // listening for remote ICE candidates {{{
-    {
-        // to handle out of order messages
-        // this ensures that we always receive all candidates
-        peerRef.collection("callerCandidates")
-            .onSnapshot((snapshot) => {
-                snapshot.docChanges()
-                    .forEach(async (change) => {
-                        if (change.type === "added") {
-                            const {
-                                type,
-                                data,
-                            } = change.doc.data();
+    // to handle out of order messages
+    // this ensures that we always receive all candidates
+    peerRef.collection("callerCandidates")
+        .onSnapshot((snapshot) => {
+            snapshot.docChanges()
+                .forEach(async (change) => {
+                    if (change.type === "added") {
+                        const {
+                            type,
+                            data,
+                        } = change.doc.data();
 
-                            if (type !== "end") {
-                                console.debug(`new remote ICE candidate: ${JSON.stringify(data)}`);
-                                await peerConnection.addIceCandidate(new RTCIceCandidate(data));
-                            }
+                        if (type !== "end") {
+                            console.debug(`new remote ICE candidate: ${JSON.stringify(data)}`);
+                            await peerConnection.addIceCandidate(new RTCIceCandidate(data));
                         }
-                    });
-            });
-    }
+                    }
+                });
+        });
     // }}}
 } // }}}
 
@@ -364,7 +356,7 @@ async function joinRoomById(roomId) { // {{{
     if (!roomSnapshot.exists) {
         return;
     }
-    setRoomId(roomId);
+    ROOM_ID.set(roomId);
 
     peerSnapshot.forEach(async (peer) => {
         await processOffer(peer.ref);
@@ -386,17 +378,36 @@ async function sendData(object) {
     }
 }
 
-function recvData(peerConnection) { // {{{
+// TODO
+async function requestControllerAccess(_callback) {
+    sendData({ action: "controller" });
+}
+
+function recvData(peerConnection, remoteName) { // {{{
     peerConnection.addEventListener("datachannel", (event) => {
         const dataChannelRecv = event.channel;
 
         dataChannelRecv.addEventListener("message", (eventMessage) => {
-            console.log(`rtc> Received Message: ${eventMessage.data}`);
-            const message = JSON.parse(eventMessage.data);
-            recvTime(message);
+            console.log(`rtc> Received Message: ${eventMessage.data} from ${remoteName}`);
+
+            const {
+                action,
+                ...message
+            } = JSON.parse(eventMessage.data);
+
+            switch (action) {
+            case "synctime":
+                recvTime(message);
+                break;
+            case "controller":
+                controllerRequested(message);
+                break;
+            default:
+                console.debug(`Action ${action} not matched`);
+            }
         });
 
-        peers.push(new Peer(peerConnection, dataChannelRecv, Peer.RECEIVER_TYPE));
+        peers.push(new Peer(remoteName, peerConnection, dataChannelRecv, Peer.RECEIVER_TYPE));
     });
 } // }}}
 
@@ -406,7 +417,7 @@ function hangUp(callback) { // {{{
     }
 
     // remove self from peers on hangup {{{
-    getRoomId(async (roomId) => {
+    ROOM_ID.get(async (roomId) => {
         if (roomId) {
             const db = firebase.firestore(),
                 selfRef = db.collection("rooms")
@@ -462,6 +473,11 @@ chrome.runtime.onMessage.addListener(function ({
             } else {
                 sendResponse("Errored!");
             }
+        });
+        return true;
+    case "requestController":
+        requestControllerAccess((status) => {
+            sendResponse(status);
         });
         return true;
     default:

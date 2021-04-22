@@ -3,9 +3,11 @@
 const controller = new Controller("yt");
 
 setInterval(function () {
+    const data = controller.getSendInfo();
+
     chrome.runtime.sendMessage({
         action: "sendTime",
-        time: controller.getTime(),
+        ...data,
     }, function (_response) {
         if (chrome.runtime.lastError) {
             console.log("This went wrong", chrome.runtime.lastError);
@@ -15,14 +17,14 @@ setInterval(function () {
 
 chrome.runtime.onMessage.addListener(function ({
     action,
-    ...others
+    ...data
 }, _sender, sendResponse) {
     switch (action) {
     case "recvTime":
-        console.log(`Received timestamp at: ${others.time}`);
-        controller.goto(others.time);
+        console.log(`Received: ${JSON.stringify(data)}`);
+        controller.goto(data.time, data.paused);
         sendResponse({ done: true });
-        return true;
+        break;
     default:
         console.log("Unknown message!");
     }

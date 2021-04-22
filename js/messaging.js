@@ -1,5 +1,16 @@
-async function sendTime(time) {
-    sendData({ time });
+async function sendTime(data) {
+    sendData({
+        ...data,
+        action: "synctime",
+    });
+}
+
+async function controllerRequested(message) {
+    console.debug(`Received request to controller: ${message}`);
+}
+
+function escapeRegex(string) {
+    return string.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
 }
 
 async function recvTime(data) {
@@ -7,10 +18,14 @@ async function recvTime(data) {
         const message = {
             action: "recvTime",
             time: data.time,
+            paused: data.paused,
         };
 
         for (const tab of tabs) {
-            chrome.tabs.sendMessage(tab.id, message);
+            const regex = new RegExp(escapeRegex(tab.url));
+            if (regex.test(data.url)) {
+                chrome.tabs.sendMessage(tab.id, message);
+            }
         }
     });
 }
@@ -18,7 +33,7 @@ async function recvTime(data) {
 // message listeners {{{
 chrome.runtime.onMessage.addListener(function ({
     action,
-    ...others
+    ...data
 }, _sender, sendResponse) {
     if (!firebaseAppInited) {
         initFirebaseApp();
@@ -26,7 +41,17 @@ chrome.runtime.onMessage.addListener(function ({
 
     switch (action) {
     case "sendTime":
-        sendTime(others.time)
+        const {
+            url,
+            paused,
+            time,
+        } = data;
+
+        sendTime({
+            url,
+            paused,
+            time,
+        })
             .then(() => {
                 sendResponse("success");
             });

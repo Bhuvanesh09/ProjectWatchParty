@@ -3,14 +3,14 @@ class Controller {
 
     type;
 
-    thresh;
+    upperThreshold;
 
     lowerThresh;
 
     // type : 'yt' for YouTube, 'msstream' for MS Stream, 'vimeo' for Vimeo
     constructor(type) {
         this.type = type;
-        this.thresh = 10;
+        this.upperThreshold = 3;
         this.lowerThresh = 1;
     }
 
@@ -34,6 +34,7 @@ class Controller {
 
         if (elm) {
             elm.currentTime = time;
+            elm.playbackRate = 1.0; // reset playback rate
         }
     }
 
@@ -54,21 +55,74 @@ class Controller {
         return elm ? elm.currentTime : -1;
     }
 
-    goto(time) {
-        // give the target `time`
-        const curt = this.getTime();
+    goto(targetTime, targetPaused) {
+        const elm = this.getElement(),
+            // give the target `time`
+            currentTime = this.getTime(),
+            gap = targetTime - currentTime;
 
-        if (Math.abs(time - curt) > this.thresh) {
-            this.seek(time);
+        if (!elm) {
             return;
         }
 
-        if (Math.abs(time - curt) < this.lowerThresh) {
+        // VERY BAD IDEA: don't do this, creates jarring effect
+        // // pause the element before doing computations
+        // elm.pause();
+
+        if (Math.abs(gap) > this.upperThreshold) {
+            this.seek(targetTime);
             return;
         }
 
-        const value = 2 ** ((time - curt) / this.thresh);
+        if (Math.abs(gap) < this.lowerThresh) {
+            return;
+        }
+
+        const value = 2 ** (gap / this.upperThreshold);
         this.speedup(value);
+
+        // resume the element once computation is over
+        if (targetPaused !== elm.paused) {
+            if (targetPaused) {
+                elm.pause();
+            } else {
+                elm.play();
+            }
+        }
+    }
+
+    getURL() {
+        const elm = this.getElement();
+        if (elm) {
+            return elm.ownerDocument.documentURI;
+        }
+        return null;
+    }
+
+    getPaused() {
+        const elm = this.getElement();
+        if (elm) {
+            return elm.paused;
+        }
+        return null;
+    }
+
+    getSendInfo() {
+        const elm = this.getElement();
+
+        if (elm) {
+            const url = this.getURL(),
+                time = this.getTime(),
+                paused = this.getPaused();
+
+            return {
+                url,
+                time,
+                paused,
+            };
+        }
+
+        return null;
     }
 }
 
