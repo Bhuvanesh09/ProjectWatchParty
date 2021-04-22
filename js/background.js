@@ -142,6 +142,14 @@ async function advertiseOfferForPeers(selfRef) { // {{{
     registerPeerConnectionListeners(peerConnection);
     console.debug("Create PeerConnection with configuration: ", ICEConfiguration);
 
+    const dataChannel = peerConnection.createDataChannel("TimestampDataChannel");
+    dataChannel.addEventListener("message", (_event) => {
+        console.log("MESSAGE: ", _event.data);
+    });
+    dataChannel.addEventListener("open", (_event) => {
+        console.log(_event, "Datachannel opened");
+    });
+
     const callerCandidatesCollection = await selfRef.collection("callerCandidates");
 
     iceCandidateCollector(peerConnection, callerCandidatesCollection);
@@ -204,7 +212,7 @@ async function advertiseOfferForPeers(selfRef) { // {{{
 
                         if (expectedCandidateCount === iceCandidateReceivedCount) {
                             console.debug("Collected all remote ice candidates");
-                            let newPeer = new Peer(peerConnection, dataChannel, Peer.SENDER_TYPE);
+                            const newPeer = new Peer(peerConnection, dataChannel, Peer.SENDER_TYPE);
                             peers.push(newPeer);
 
                             advertiseOfferForPeers(selfRef);
