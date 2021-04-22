@@ -33,7 +33,20 @@ function initFirebaseApp() {
 
 // }}}
 
-// TODO: store peer name (MY_NAME) here
+const ICEConfiguration = {
+        iceServers: [
+            {
+                urls: "turn:felicity.iiit.ac.in:3478",
+                username: "felicity",
+                credential: "5xXJa5rwSafFTpjQEWDdPfRSdFaeKmIy",
+            },
+        ],
+    },
+    peers = [];
+
+let MY_NAME,
+    currentControllerPeerObject = null;
+
 class Peer { // {{{
     static SENDER_TYPE = "sender";
 
@@ -59,35 +72,59 @@ class Peer { // {{{
     }
 
     isSendable() {
-        return this.dataChannel.readyState === "open" && this.type === Peer.SENDER_TYPE;
+        return this.dataChannel.readyState === "open";
     }
 
     getDescription() {
         return this.peerName;
-
-        // const desc = this.peer.currentRemoteDescription;
-        //
-        // return `${desc.type} ${desc.sdp}`;
     }
 
-    send(packet) {
+    sendStringified(packet) {
         console.log(`rtc> Sending message: ${packet} to ${this.getDescription()}`);
         this.dataChannel.send(packet);
     }
+
+    send(packet) {
+        this.sendStringified(JSON.stringify(packet));
+    }
 } // }}}
 
-const ICEConfiguration = {
-        iceServers: [
-            {
-                urls: "turn:felicity.iiit.ac.in:3478",
-                username: "felicity",
-                credential: "5xXJa5rwSafFTpjQEWDdPfRSdFaeKmIy",
-            },
-        ],
-    },
-    peers = [];
+class Controller {
+    static REQUEST_TYPE = "requestController";
 
-let MY_NAME;
+    static setController(peerName) {
+        if (!peerName) {
+            return;
+        }
+
+        for (const peer of peers) {
+            if (peer.peerName === peerName) {
+                currentControllerPeerObject = peer;
+            }
+        }
+    }
+
+    static async receivedRequest(peerObject) {
+        console.debug(`Received request from controller: ${peerObject.getDescription()}`);
+    }
+
+    static receivedNewController(peerObject) {
+        console.debug("Received new controller", peerObject.peerName);
+        currentControllerPeerObject = peerObject;
+    }
+
+    static async requestControllerAccess(callback) {
+        if (currentControllerPeerObject.peerName === MY_NAME) {
+            callback("You are already a controller");
+        } else {
+            const msg = { action: Controller.REQUEST_TYPE };
+
+            console.debug(`Sending request ${msg} to controller: ${currentControllerPeerObject.getDescription()}`);
+
+            currentControllerPeerObject.send(msg);
+        }
+    }
+}
 
 // TODO: add an interface to allow the user to set this
 chrome.storage.local.get("username", (username) => {
@@ -143,16 +180,43 @@ function iceCandidateCollector(peerConnection, candidateCollection) {
 }
 
 async function advertiseOfferForPeers(selfRef) { // {{{
+    let sendPrepData;
+
+    (function closureForPrepData() {
+        let initCount = 0,
+            peerObject = null,
+            dataChannel = null;
+
+        sendPrepData = function (peerObjectRecv, dataChannelRecv) {
+            if (peerObjectRecv) {
+                peerObject = peerObjectRecv;
+            }
+            if (dataChannelRecv) {
+                dataChannel = dataChannelRecv;
+            }
+
+            initCount++;
+
+            if (initCount === 2) {
+                dataChannel.addEventListener("message", receiveDataHandler(peerObject));
+
+                peerObject.send({
+                    action: "initInfo",
+                    controllerName: currentControllerPeerObject.peerName,
+                });
+            }
+        };
+    }());
+
     const peerConnection = new RTCPeerConnection(ICEConfiguration);
     registerPeerConnectionListeners(peerConnection);
     console.debug("Create PeerConnection with configuration: ", ICEConfiguration);
 
     const dataChannel = peerConnection.createDataChannel("TimestampDataChannel");
-    dataChannel.addEventListener("message", (_event) => {
-        console.log("MESSAGE: ", _event.data);
-    });
+
     dataChannel.addEventListener("open", (_event) => {
         console.log(_event, "Datachannel opened");
+        sendPrepData(undefined, dataChannel);
     });
 
     const callerCandidatesCollection = await selfRef.collection("callerCandidates");
@@ -224,6 +288,8 @@ async function advertiseOfferForPeers(selfRef) { // {{{
                             const newPeer = new Peer(remotePeerName, peerConnection, dataChannel, Peer.SENDER_TYPE);
                             peers.push(newPeer);
 
+                            sendPrepData(newPeer);
+
                             advertiseOfferForPeers(selfRef);
 
                             const calleeCandidates = await selfRef.collection("calleeCandidates")
@@ -257,6 +323,8 @@ async function createRoom() { // {{{
     const selfRef = await roomRef.collection("peers")
         .doc(MY_NAME);
 
+    // the creator of the room is its initial controller
+    currentControllerPeerObject = new Peer(MY_NAME);
     advertiseOfferForPeers(selfRef);
 
     ROOM_ID.set(roomRef.id);
@@ -373,41 +441,52 @@ async function sendData(object) {
 
     for (const peer of peers) {
         if (peer.isSendable()) {
-            peer.send(packet);
+            peer.sendStringified(packet);
         }
     }
 }
 
-// TODO
-async function requestControllerAccess(_callback) {
-    sendData({ action: "controller" });
+function receiveDataHandler(peerObject) {
+    const remoteName = peerObject.peerName;
+
+    return (eventMessage) => {
+        console.log(`rtc> Received Message: ${eventMessage.data} from ${remoteName}`);
+
+        const {
+            action,
+            ...message
+        } = JSON.parse(eventMessage.data);
+
+        switch (action) {
+        case "initInfo": {
+            // TODO: profile picture and names go here
+            const { controllerName } = message;
+            Controller.setController(controllerName);
+        }
+            break;
+        case "synctime":
+            Time.receive(message);
+            break;
+        case Controller.REQUEST_TYPE:
+            Controller.receivedRequest(peerObject);
+            break;
+        case "new-controller":
+            Controller.receivedNewController(peerObject);
+            break;
+        default:
+            console.debug(`Action ${action} not matched`);
+        }
+    };
 }
 
 function recvData(peerConnection, remoteName) { // {{{
     peerConnection.addEventListener("datachannel", (event) => {
-        const dataChannelRecv = event.channel;
+        const dataChannelRecv = event.channel,
+            newPeer = new Peer(remoteName, peerConnection, dataChannelRecv, Peer.RECEIVER_TYPE);
 
-        dataChannelRecv.addEventListener("message", (eventMessage) => {
-            console.log(`rtc> Received Message: ${eventMessage.data} from ${remoteName}`);
+        peers.push(newPeer);
 
-            const {
-                action,
-                ...message
-            } = JSON.parse(eventMessage.data);
-
-            switch (action) {
-            case "synctime":
-                recvTime(message);
-                break;
-            case "controller":
-                controllerRequested(message);
-                break;
-            default:
-                console.debug(`Action ${action} not matched`);
-            }
-        });
-
-        peers.push(new Peer(remoteName, peerConnection, dataChannelRecv, Peer.RECEIVER_TYPE));
+        dataChannelRecv.addEventListener("message", receiveDataHandler(newPeer));
     });
 } // }}}
 
@@ -476,12 +555,12 @@ chrome.runtime.onMessage.addListener(function ({
         });
         return true;
     case "requestController":
-        requestControllerAccess((status) => {
+        Controller.requestControllerAccess((status) => {
             sendResponse(status);
         });
         return true;
     default:
-        console.debug("Unknown action requested!");
+        console.debug(`Unknown action: ${action} requested!`);
     }
 
     return false;

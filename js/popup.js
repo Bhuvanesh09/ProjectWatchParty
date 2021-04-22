@@ -75,12 +75,15 @@ function createRoom(_clickEvent) {
 }
 
 function requestController(_clickEvent) {
+    const controllerElm = document.getElementById("current-controller");
+    controllerElm.innerText = "Creating room...";
+
     chrome.runtime.sendMessage({ action: "requestController" }, function (ret) {
         if (chrome.runtime.lastError) {
             console.log("ERROR", chrome.runtime.lastError);
-            console.debug("bleh");
+            controllerElm.innerText = "Error accessing controller, check console logs";
         } else {
-            console.debug(`Response: ${ret}`);
+            controllerElm.innerText = ret;
         }
     });
 }
