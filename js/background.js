@@ -383,7 +383,7 @@ function recvData(peerConnection) { // {{{
             } = JSON.parse(eventMessage.data);
 
             switch (action) {
-            case "time":
+            case "synctime":
                 recvTime(message);
                 break;
             case "controller":

@@ -3,14 +3,14 @@ class Controller {
 
     type;
 
-    thresh;
+    upperThreshold;
 
     lowerThresh;
 
     // type : 'yt' for YouTube, 'msstream' for MS Stream, 'vimeo' for Vimeo
     constructor(type) {
         this.type = type;
-        this.thresh = 5;
+        this.upperThreshold = 3;
         this.lowerThresh = 1;
     }
 
@@ -55,20 +55,21 @@ class Controller {
         return elm ? elm.currentTime : -1;
     }
 
-    goto(time) {
+    goto(targetTime) {
         // give the target `time`
-        const curt = this.getTime();
+        const currentTime = this.getTime(),
+            gap = targetTime - currentTime;
 
-        if (Math.abs(time - curt) > this.thresh) {
-            this.seek(time);
+        if (Math.abs(gap) < this.upperThreshold) {
+            this.seek(targetTime);
             return;
         }
 
-        if (Math.abs(time - curt) < this.lowerThresh) {
+        if (Math.abs(gap) < this.lowerThresh) {
             return;
         }
 
-        const value = 2 ** ((time - curt) / this.thresh);
+        const value = 2 ** ((targetTime - currentTime) / this.lowerThresh);
         this.speedup(value);
     }
 }
