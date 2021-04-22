@@ -10,7 +10,7 @@ class Controller {
     // type : 'yt' for YouTube, 'msstream' for MS Stream, 'vimeo' for Vimeo
     constructor(type) {
         this.type = type;
-        this.thresh = 10;
+        this.thresh = 5;
         this.lowerThresh = 1;
     }
 
@@ -34,6 +34,7 @@ class Controller {
 
         if (elm) {
             elm.currentTime = time;
+            elm.playbackRate = 1.0; // reset playback rate
         }
     }
 
