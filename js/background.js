@@ -39,20 +39,23 @@ class Peer { // {{{
 
     static RECEIVER_TYPE = "receiver";
 
-    peer;
+    peerConnection;
 
     dataChannel;
 
     type;
 
-    constructor(peerConnection, dataChannel, type) {
-        this.peer = peerConnection;
+    peerName;
+
+    constructor(peerName, peerConnection, dataChannel, type) {
+        this.peerName = peerName;
+        this.peerConnection = peerConnection;
         this.dataChannel = dataChannel;
         this.type = type;
     }
 
     close() {
-        this.peer.close();
+        this.peerConnection.close();
     }
 
     isSendable() {
@@ -60,13 +63,15 @@ class Peer { // {{{
     }
 
     getDescription() {
-        const desc = this.peer.currentRemoteDescription;
+        return this.peerName;
 
-        return `${desc.type} ${desc.sdp}`;
+        // const desc = this.peer.currentRemoteDescription;
+        //
+        // return `${desc.type} ${desc.sdp}`;
     }
 
     send(packet) {
-        console.log(`rtc> Sending message: ${packet}`);
+        console.log(`rtc> Sending message: ${packet} to ${this.getDescription()}`);
         this.dataChannel.send(packet);
     }
 } // }}}
@@ -164,16 +169,20 @@ async function advertiseOfferForPeers(selfRef) { // {{{
             type: offer.type,
             sdp: offer.sdp,
         },
+        peerName: MY_NAME,
     };
 
     await selfRef.set(roomWithOffer);
     // }}}
 
+    let remotePeerName = null;
+
     // listening for remote session description {{{
     selfRef.onSnapshot(async (snapshot) => {
         const data = snapshot.data();
         if (!peerConnection.currentRemoteDescription && data && data.answer) {
-            console.debug("Got remote description: ", data.answer);
+            remotePeerName = data.peerName;
+            console.debug("Got remote description: ", data.answer, "from", remotePeerName);
             const rtcSessionDescription = new RTCSessionDescription(data.answer);
             await peerConnection.setRemoteDescription(rtcSessionDescription);
         }
@@ -212,7 +221,7 @@ async function advertiseOfferForPeers(selfRef) { // {{{
 
                         if (expectedCandidateCount === iceCandidateReceivedCount) {
                             console.debug("Collected all remote ice candidates");
-                            const newPeer = new Peer(peerConnection, dataChannel, Peer.SENDER_TYPE);
+                            const newPeer = new Peer(remotePeerName, peerConnection, dataChannel, Peer.SENDER_TYPE);
                             peers.push(newPeer);
 
                             advertiseOfferForPeers(selfRef);
@@ -281,16 +290,21 @@ async function processOffer(peerRef) { // {{{
     const peerConnection = new RTCPeerConnection(ICEConfiguration);
     registerPeerConnectionListeners(peerConnection);
 
-    recvData(peerConnection);
-
     // collecting ICE candidates {{{
     const calleeCandidatesCollection = peerRef.collection("calleeCandidates");
     iceCandidateCollector(peerConnection, calleeCandidatesCollection);
 
     // creating SDP answer {{{
     const peerSnapshot = await peerRef.get(),
-        { offer } = peerSnapshot.data();
-    console.debug("Got offer:", offer);
+        {
+            offer,
+            peerName,
+        } = peerSnapshot.data();
+
+    console.debug("Got offer:", offer, "from", peerName);
+
+    recvData(peerConnection, peerName);
+
     await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
     const answer = await peerConnection.createAnswer();
     console.debug("Created answer:", answer);
@@ -301,32 +315,31 @@ async function processOffer(peerRef) { // {{{
             type: answer.type,
             sdp: answer.sdp,
         },
+        peerName: MY_NAME,
     };
     await peerRef.update(roomWithAnswer);
     // }}}
 
     // listening for remote ICE candidates {{{
-    {
-        // to handle out of order messages
-        // this ensures that we always receive all candidates
-        peerRef.collection("callerCandidates")
-            .onSnapshot((snapshot) => {
-                snapshot.docChanges()
-                    .forEach(async (change) => {
-                        if (change.type === "added") {
-                            const {
-                                type,
-                                data,
-                            } = change.doc.data();
+    // to handle out of order messages
+    // this ensures that we always receive all candidates
+    peerRef.collection("callerCandidates")
+        .onSnapshot((snapshot) => {
+            snapshot.docChanges()
+                .forEach(async (change) => {
+                    if (change.type === "added") {
+                        const {
+                            type,
+                            data,
+                        } = change.doc.data();
 
-                            if (type !== "end") {
-                                console.debug(`new remote ICE candidate: ${JSON.stringify(data)}`);
-                                await peerConnection.addIceCandidate(new RTCIceCandidate(data));
-                            }
+                        if (type !== "end") {
+                            console.debug(`new remote ICE candidate: ${JSON.stringify(data)}`);
+                            await peerConnection.addIceCandidate(new RTCIceCandidate(data));
                         }
-                    });
-            });
-    }
+                    }
+                });
+        });
     // }}}
 } // }}}
 
@@ -370,12 +383,12 @@ async function requestControllerAccess(_callback) {
     sendData({ action: "controller" });
 }
 
-function recvData(peerConnection) { // {{{
+function recvData(peerConnection, remoteName) { // {{{
     peerConnection.addEventListener("datachannel", (event) => {
         const dataChannelRecv = event.channel;
 
         dataChannelRecv.addEventListener("message", (eventMessage) => {
-            console.log(`rtc> Received Message: ${eventMessage.data}`);
+            console.log(`rtc> Received Message: ${eventMessage.data} from ${remoteName}`);
 
             const {
                 action,
@@ -394,7 +407,7 @@ function recvData(peerConnection) { // {{{
             }
         });
 
-        peers.push(new Peer(peerConnection, dataChannelRecv, Peer.RECEIVER_TYPE));
+        peers.push(new Peer(remoteName, peerConnection, dataChannelRecv, Peer.RECEIVER_TYPE));
     });
 } // }}}
 

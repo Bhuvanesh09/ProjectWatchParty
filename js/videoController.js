@@ -60,7 +60,7 @@ class Controller {
         const currentTime = this.getTime(),
             gap = targetTime - currentTime;
 
-        if (Math.abs(gap) < this.upperThreshold) {
+        if (Math.abs(gap) > this.upperThreshold) {
             this.seek(targetTime);
             return;
         }
@@ -69,7 +69,7 @@ class Controller {
             return;
         }
 
-        const value = 2 ** ((targetTime - currentTime) / this.lowerThresh);
+        const value = 2 ** (gap / this.lowerThresh);
         this.speedup(value);
     }
 }
