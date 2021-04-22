@@ -40,7 +40,18 @@
         </div>
 
         <div class="row m-2">
-            Allow request from: <span id="controller-requester"></span>
+            Allow request from:
+            <table>
+                <thead>
+                <th>Requester</th>
+                <th></th>
+                <th></th>
+                </thead>
+                <tbody id="requester-list">
+
+                </tbody>
+            </table>
+             <span id="controller-requester"></span>
             <div class="btn-group me-2">
                 <button id="allowRequest" class="btn-success">Allow</button>
                 <button id="denyRequest" class="btn-danger">Deny</button>

@@ -94,12 +94,19 @@ class Controller {
 
     static GIVE_TYPE = "giveController";
 
+    static requests = [];
+
     static setController(newControllerName) {
         if (!newControllerName) {
             return;
         }
 
-        console.log(`Controller: setting new controller to ${newControllerName}`);
+        chrome.runtime.sendMessage({
+            action: "controllerName",
+            controllerName: newControllerName,
+        });
+
+        console.debug(`Controller: setting new controller to ${newControllerName}`);
 
         if (newControllerName === MY_NAME) {
             this.meController();
@@ -133,6 +140,10 @@ class Controller {
         }
     }
 
+    static addNewRequest(peerObject) {
+        Controller.requests.push(peerObject.peerName);
+    }
+
     static async receivedRequest(peerObject) {
         const remoteDesc = peerObject.getDescription();
 
@@ -140,16 +151,7 @@ class Controller {
 
         chrome.runtime.sendMessage({
             action: "controllerRequest",
-            requester: remoteDesc,
-        }, function (isAccepted) {
-            if (isAccepted) {
-                peerObject.send({
-                    action: Controller.GIVE_TYPE,
-                    controllerName: peerObject.peerName,
-                });
-            } else {
-                console.debug("Controller request was rejected! :(");
-            }
+            requesterList: Controller.requests,
         });
     }
 
@@ -500,8 +502,10 @@ function receiveDataHandler(peerObject) {
         } = JSON.parse(eventMessage.data);
 
         switch (action) {
-        case "initInfo": {
+        case "initInfo":
             // TODO: profile picture and names go here
+
+        case Controller.GIVE_TYPE: {
             const { controllerName } = message;
             Controller.setController(controllerName);
         }
@@ -511,16 +515,6 @@ function receiveDataHandler(peerObject) {
             break;
         case Controller.REQUEST_TYPE:
             Controller.receivedRequest(peerObject);
-            break;
-        case Controller.GIVE_TYPE: {
-            const { controllerName } = message;
-            Controller.setController(controllerName);
-
-            chrome.runtime.sendMessage({
-                action: "controllerName",
-                controllerName,
-            });
-        }
             break;
         default:
             console.debug(`Action ${action} not matched`);
@@ -607,7 +601,21 @@ chrome.runtime.onMessage.addListener(function ({
         Controller.requestControllerAccess((status) => {
             sendResponse(status);
         });
+
         return true;
+    case "controllerRequestUpdate":
+        // TODO:
+        {
+            if (isAccepted) {
+                peerObject.send({
+                    action: Controller.GIVE_TYPE,
+                    controllerName: peerObject.peerName,
+                });
+            } else {
+                console.debug("Controller request was rejected! :(");
+            }
+        }
+        break;
     default:
         console.debug(`Unknown action: ${action} requested!`);
     }

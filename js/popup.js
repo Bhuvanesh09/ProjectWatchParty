@@ -5,8 +5,8 @@ function initMessaging() {
     }, _sender, sendResponse) {
         switch (action) {
         case "controllerRequest": {
-            const { requester } = message;
-            displayRequestController(requester, (isAccepted) => {
+            const { requesterList } = message;
+            displayRequestController(requesterList, (isAccepted) => {
                 sendResponse(isAccepted);
             });
         }
@@ -182,42 +182,59 @@ let displayRequestController,
     displayCurrentController;
 
 (function () {
-    let peerNameCurrent,
-        callbackCurrent,
+    let peerNames,
         controllerCurrent,
-        acceptButton,
-        rejectButton,
-        spanRequesterName;
+        requesterTableBody;
 
-    displayRequestController = function (peerName, callback) {
-        peerNameCurrent = peerName;
-        callbackCurrent = callback;
-        spanRequesterName.innerText = peerName;
+    displayRequestController = function (peerNameList) {
+        while (requesterTableBody.firstChild) {
+            requesterTableBody.removeChild(requesterTableBody.lastChild);
+        }
+
+        function replier(peerNameActual, status) {
+            return function (_clickEvent) {
+                // TODO: send msg to background
+            };
+        }
+
+        for (const peerName of peerNames) {
+            const span = document.createElement("span");
+            span.innerText = peerName;
+
+            const acceptButton = document.createElement("button"),
+                rejectButton = document.createElement("button");
+
+            acceptButton.classList.add("btn", "btn-success");
+            rejectButton.classList.add("btn", "btn-danger");
+            acceptButton.addEventListener("click", replier(peerName, true));
+            rejectButton.addEventListener("click", replier(peerName, false));
+
+            const tr = document.createElement("tr");
+
+            let td = document.createElement("td");
+            td.appendChild(span);
+            tr.appendChild(td);
+
+            td = document.createElement("td");
+            td.appendChild(acceptButton);
+            tr.appendChild(td);
+
+            td = document.createElement("td");
+            td.appendChild(rejectButton);
+            tr.appendChild(td);
+
+            requesterTableBody.appendChild(tr);
+        }
     };
 
     displayCurrentController = function (peerName) {
         controllerCurrent.innerText = peerName;
-        spanRequesterName.innerText = "";
-        peerNameCurrent = callbackCurrent = null;
+        displayRequestController([]);
     };
 
     initDisplayController = function () {
-        acceptButton = document.getElementById("allowRequest");
-        rejectButton = document.getElementById("denyRequest");
-        spanRequesterName = document.getElementById("controller-requester");
+        requesterTableBody = document.getElementById("controller-requester");
         controllerCurrent = document.getElementById("current-controller");
-
-        function replier(status) {
-            return function (_clickEvent) {
-                if (peerNameCurrent) {
-                    callbackCurrent(status);
-                    peerNameCurrent = false;
-                }
-            };
-        }
-
-        acceptButton.addEventListener("click", replier(true));
-        rejectButton.addEventListener("click", replier(false));
     };
 }());
 
