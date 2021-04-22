@@ -68,7 +68,8 @@ function createRoom(_clickEvent) {
             console.log("ERROR", chrome.runtime.lastError);
             roomIdElm.innerText = "Error creating room, check console logs";
         } else {
-            roomIdElm.innerText = roomId;
+            roomIdElm.innerText = `${roomId}; copied to clipboard`;
+            window.navigator.clipboard.writeText(roomId);
         }
     });
 }
