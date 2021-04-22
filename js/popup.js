@@ -1,5 +1,27 @@
-function init() {
-    initControls();
+function initMessaging() {
+    chrome.runtime.onMessage.addListener(function ({
+        action,
+        ...message
+    }, _sender, sendResponse) {
+        switch (action) {
+        case "controllerRequest": {
+            const { requester } = message;
+            displayRequestController(requester, (isAccepted) => {
+                sendResponse(isAccepted);
+            });
+        }
+            return true;
+        case "controllerName": {
+            const { controllerName } = message;
+            displayCurrentController(controllerName);
+        }
+            break;
+        default:
+            console.log(`Unknown action: ${action}`);
+        }
+
+        return false;
+    });
 }
 
 function initControls() {
@@ -76,7 +98,7 @@ function createRoom(_clickEvent) {
 
 function requestController(_clickEvent) {
     const controllerElm = document.getElementById("current-controller");
-    controllerElm.innerText = "Creating room...";
+    controllerElm.innerText = "Sending request....";
 
     chrome.runtime.sendMessage({ action: "requestController" }, function (ret) {
         if (chrome.runtime.lastError) {
@@ -153,6 +175,56 @@ function testProgressBar() {
             window.clearInterval(event);
         }
     }, 200);
+}
+
+let displayRequestController,
+    initDisplayController,
+    displayCurrentController;
+
+(function () {
+    let peerNameCurrent,
+        callbackCurrent,
+        controllerCurrent,
+        acceptButton,
+        rejectButton,
+        spanRequesterName;
+
+    displayRequestController = function (peerName, callback) {
+        peerNameCurrent = peerName;
+        callbackCurrent = callback;
+        spanRequesterName.innerText = peerName;
+    };
+
+    displayCurrentController = function (peerName) {
+        controllerCurrent.innerText = peerName;
+        spanRequesterName.innerText = "";
+        peerNameCurrent = callbackCurrent = null;
+    };
+
+    initDisplayController = function () {
+        acceptButton = document.getElementById("allowRequest");
+        rejectButton = document.getElementById("denyRequest");
+        spanRequesterName = document.getElementById("controller-requester");
+        controllerCurrent = document.getElementById("current-controller");
+
+        function replier(status) {
+            return function (_clickEvent) {
+                if (peerNameCurrent) {
+                    callbackCurrent(status);
+                    peerNameCurrent = false;
+                }
+            };
+        }
+
+        acceptButton.addEventListener("click", replier(true));
+        rejectButton.addEventListener("click", replier(false));
+    };
+}());
+
+function init() {
+    initControls();
+    initMessaging();
+    initDisplayController();
 }
 
 (function checkInit() {

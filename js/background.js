@@ -92,25 +92,65 @@ class Peer { // {{{
 class Controller {
     static REQUEST_TYPE = "requestController";
 
-    static setController(peerName) {
-        if (!peerName) {
+    static GIVE_TYPE = "giveController";
+
+    static setController(newControllerName) {
+        if (!newControllerName) {
             return;
         }
 
-        for (const peer of peers) {
-            if (peer.peerName === peerName) {
-                currentControllerPeerObject = peer;
+        console.log(`Controller: setting new controller to ${newControllerName}`);
+
+        if (newControllerName === MY_NAME) {
+            this.meController();
+        } else {
+            let found = false;
+
+            for (const peer of peers) {
+                if (peer.peerName === newControllerName) {
+                    found = true;
+                    currentControllerPeerObject = peer;
+                    break;
+                }
+            }
+
+            if (!found) {
+                console.error(`Controller: Received name ${newControllerName} but not found in peer list`);
             }
         }
     }
 
-    static async receivedRequest(peerObject) {
-        console.debug(`Received request from controller: ${peerObject.getDescription()}`);
+    static meController() {
+        console.debug("Setting myself the controller");
+        currentControllerPeerObject = new Peer(MY_NAME);
+
+        // broadcast my being the new controller to all my peers
+        for (const peer of peers) {
+            peer.send({
+                action: Controller.GIVE_TYPE,
+                controllerName: currentControllerPeerObject.peerName,
+            });
+        }
     }
 
-    static receivedNewController(peerObject) {
-        console.debug("Received new controller", peerObject.peerName);
-        currentControllerPeerObject = peerObject;
+    static async receivedRequest(peerObject) {
+        const remoteDesc = peerObject.getDescription();
+
+        console.debug(`Controller: Received request from: ${remoteDesc}`);
+
+        chrome.runtime.sendMessage({
+            action: "controllerRequest",
+            requester: remoteDesc,
+        }, function (isAccepted) {
+            if (isAccepted) {
+                peerObject.send({
+                    action: Controller.GIVE_TYPE,
+                    controllerName: peerObject.peerName,
+                });
+            } else {
+                console.debug("Controller request was rejected! :(");
+            }
+        });
     }
 
     static async requestControllerAccess(callback) {
@@ -350,6 +390,8 @@ function registerPeerConnectionListeners(peerConnection) { // {{{
         console.debug(
             `ICE connection state change: ${peerConnection.iceConnectionState}`,
         );
+        // TODO: listen for disconnected here and drop controller accordingly
+        // https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/connectionState
     });
 } // }}}
 
@@ -470,8 +512,15 @@ function receiveDataHandler(peerObject) {
         case Controller.REQUEST_TYPE:
             Controller.receivedRequest(peerObject);
             break;
-        case "new-controller":
-            Controller.receivedNewController(peerObject);
+        case Controller.GIVE_TYPE: {
+            const { controllerName } = message;
+            Controller.setController(controllerName);
+
+            chrome.runtime.sendMessage({
+                action: "controllerName",
+                controllerName,
+            });
+        }
             break;
         default:
             console.debug(`Action ${action} not matched`);

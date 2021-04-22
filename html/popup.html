@@ -31,9 +31,21 @@
     <hr>
 
     <div class="row m-2">
-        <button id="request-controller" class="btn btn-primary">Request controller</button>
-        <br>
-        Current controller: <label for="request-controller" id="current-controller"></label>
+        <div class="row m-2">
+            <button id="request-controller" class="btn btn-primary">Request controller</button>
+        </div>
+
+        <div class="row m-2">
+            Current controller: <label for="request-controller" id="current-controller"></label>
+        </div>
+
+        <div class="row m-2">
+            Allow request from: <span id="controller-requester"></span>
+            <div class="btn-group me-2">
+                <button id="allowRequest" class="btn-success">Allow</button>
+                <button id="denyRequest" class="btn-danger">Deny</button>
+            </div>
+        </div>
     </div>
 
     <hr>
