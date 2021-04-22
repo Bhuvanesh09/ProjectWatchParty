@@ -33,6 +33,7 @@ function initFirebaseApp() {
 
 // }}}
 
+// TODO: store peer name (MY_NAME) here
 class Peer { // {{{
     static SENDER_TYPE = "sender";
 
@@ -58,7 +59,14 @@ class Peer { // {{{
         return this.dataChannel.readyState === "open" && this.type === "sender";
     }
 
+    getDescription() {
+        const desc = this.peer.currentRemoteDescription;
+
+        return `${desc.type} ${desc.sdp}`;
+    }
+
     send(packet) {
+        console.log(`rtc> Sending message: ${packet}`);
         this.dataChannel.send(packet);
     }
 } // }}}
@@ -203,10 +211,8 @@ async function advertiseOfferForPeers(selfRef) { // {{{
 
                         if (expectedCandidateCount === iceCandidateReceivedCount) {
                             console.debug("Collected all remote ice candidates");
-                            console.debug("before peer.push", peers.length);
                             let newPeer = new Peer(peerConnection, dataChannel, Peer.SENDER_TYPE);
                             peers.push(newPeer);
-                            console.debug("after peer.push", peers.length, newPeer);
 
                             advertiseOfferForPeers(selfRef);
 
@@ -372,7 +378,6 @@ async function joinRoomById(roomId) { // {{{
 
 async function sendData(object) {
     const packet = JSON.stringify(object);
-    console.log(`rtc> Sending message: ${packet}`);
 
     for (const peer of peers) {
         if (peer.isSendable()) {
@@ -386,7 +391,7 @@ function recvData(peerConnection) { // {{{
         const dataChannelRecv = event.channel;
 
         dataChannelRecv.addEventListener("message", (eventMessage) => {
-            console.log(`rtc> Receiving Message: ${eventMessage.data}`);
+            console.log(`rtc> Received Message: ${eventMessage.data}`);
             const message = JSON.parse(eventMessage.data);
             recvTime(message);
         });
