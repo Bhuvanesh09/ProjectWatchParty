@@ -55,10 +55,19 @@ class Controller {
         return elm ? elm.currentTime : -1;
     }
 
-    goto(targetTime) {
-        // give the target `time`
-        const currentTime = this.getTime(),
+    goto(targetTime, targetPaused) {
+        const elm = this.getElement(),
+            // give the target `time`
+            currentTime = this.getTime(),
             gap = targetTime - currentTime;
+
+        if (!elm) {
+            return;
+        }
+
+        // VERY BAD IDEA: don't do this, creates jarring effect
+        // // pause the element before doing computations
+        // elm.pause();
 
         if (Math.abs(gap) > this.upperThreshold) {
             this.seek(targetTime);
@@ -69,8 +78,51 @@ class Controller {
             return;
         }
 
-        const value = 2 ** (gap / this.lowerThresh);
+        const value = 2 ** (gap / this.upperThreshold);
         this.speedup(value);
+
+        // resume the element once computation is over
+        if (targetPaused !== elm.paused) {
+            if (targetPaused) {
+                elm.pause();
+            } else {
+                elm.play();
+            }
+        }
+    }
+
+    getURL() {
+        const elm = this.getElement();
+        if (elm) {
+            return elm.ownerDocument.documentURI;
+        }
+        return null;
+    }
+
+    getPaused() {
+        const elm = this.getElement();
+        if (elm) {
+            return elm.paused;
+        }
+        return null;
+    }
+
+    getSendInfo() {
+        const elm = this.getElement();
+
+        if (elm) {
+            const url = this.getURL(),
+                time = this.getTime(),
+                paused = this.getPaused();
+
+            return {
+                url,
+                time,
+                paused,
+            };
+        }
+
+        return null;
     }
 }
 
