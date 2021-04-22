@@ -33,7 +33,8 @@ function initFirebaseApp() {
 
 // }}}
 
-class Peer {
+// TODO: store peer name (MY_NAME) here
+class Peer { // {{{
     static SENDER_TYPE = "sender";
 
     static RECEIVER_TYPE = "receiver";
@@ -58,10 +59,17 @@ class Peer {
         return this.dataChannel.readyState === "open" && this.type === "sender";
     }
 
+    getDescription() {
+        const desc = this.peer.currentRemoteDescription;
+
+        return `${desc.type} ${desc.sdp}`;
+    }
+
     send(packet) {
+        console.log(`rtc> Sending message: ${packet}`);
         this.dataChannel.send(packet);
     }
-}
+} // }}}
 
 const ICEConfiguration = {
         iceServers: [
@@ -71,7 +79,6 @@ const ICEConfiguration = {
                 credential: "5xXJa5rwSafFTpjQEWDdPfRSdFaeKmIy",
             },
         ],
-        iceCandidatePoolSize: 10,
     },
     peers = [];
 
@@ -83,6 +90,7 @@ let getRoomId,
 chrome.storage.local.get("username", (username) => {
     MY_NAME = username.username;
 });
+
 
 { // TODO: fix: @sigmag {{{
     const ROOM_ID_KEY = "roomId";
@@ -112,6 +120,14 @@ async function advertiseOfferForPeers(selfRef) { // {{{
     const peerConnection = new RTCPeerConnection(ICEConfiguration);
     registerPeerConnectionListeners(peerConnection);
     console.debug("Create PeerConnection with configuration: ", ICEConfiguration);
+
+    const dataChannel = peerConnection.createDataChannel("TimestampDataChannel");
+    dataChannel.addEventListener("message", (_event) => {
+        console.log("MESSAGE:", _event.data);
+    })
+    dataChannel.addEventListener("open", (_event) => {
+        console.log(_event, "Datachannel opened");
+    });
 
     const callerCandidatesCollection = await selfRef.collection("callerCandidates");
     let iceCandidateSendCount = 0;
@@ -194,12 +210,9 @@ async function advertiseOfferForPeers(selfRef) { // {{{
                         }
 
                         if (expectedCandidateCount === iceCandidateReceivedCount) {
-                            const dataChannel = peerConnection.createDataChannel("TimestampDataChannel");
-                            dataChannel.addEventListener("open", (_event) => {
-                                console.log(_event, "Datachannel opened");
-                            });
-
-                            peers.push(new Peer(peerConnection, dataChannel, Peer.SENDER_TYPE));
+                            console.debug("Collected all remote ice candidates");
+                            let newPeer = new Peer(peerConnection, dataChannel, Peer.SENDER_TYPE);
+                            peers.push(newPeer);
 
                             advertiseOfferForPeers(selfRef);
 
@@ -317,8 +330,6 @@ async function processOffer(peerRef) { // {{{
     {
         // to handle out of order messages
         // this ensures that we always receive all candidates
-        let iceCandidateReceivedCount = 0,
-            expectedCandidateCount = Number.POSITIVE_INFINITY;
         peerRef.collection("callerCandidates")
             .onSnapshot((snapshot) => {
                 snapshot.docChanges()
@@ -329,18 +340,10 @@ async function processOffer(peerRef) { // {{{
                                 data,
                             } = change.doc.data();
 
-                            if (type === "end") {
-                                expectedCandidateCount = data;
-                            } else {
+                            if (type !== "end") {
                                 console.debug(`new remote ICE candidate: ${JSON.stringify(data)}`);
                                 await peerConnection.addIceCandidate(new RTCIceCandidate(data));
-                                iceCandidateReceivedCount++;
                             }
-                        }
-
-                        if (expectedCandidateCount === iceCandidateReceivedCount) {
-                            // TODO: undefined datachannel :/
-                            // peers.push(new Peer(peerConnection, undefined, "receiver"));
                         }
                     });
             });
@@ -375,7 +378,6 @@ async function joinRoomById(roomId) { // {{{
 
 async function sendData(object) {
     const packet = JSON.stringify(object);
-    console.log(`rtc> Sending message: ${packet}`);
 
     for (const peer of peers) {
         if (peer.isSendable()) {
@@ -389,7 +391,7 @@ function recvData(peerConnection) { // {{{
         const dataChannelRecv = event.channel;
 
         dataChannelRecv.addEventListener("message", (eventMessage) => {
-            console.log(`rtc> Receiving Message: ${eventMessage.data}`);
+            console.log(`rtc> Received Message: ${eventMessage.data}`);
             const message = JSON.parse(eventMessage.data);
             recvTime(message);
         });
