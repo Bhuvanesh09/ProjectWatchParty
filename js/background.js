@@ -577,14 +577,12 @@ function recvData(peerConnection, remoteName) { // {{{
 } // }}}
 
 function receivedTextMessage(message, remoteName) {
-    console.log("${message} from ${remoteName}`)
+    console.log(`${message} from ${remoteName}`)
 
     chrome.runtime.sendMessage({
         action: "textMessageReceiving",
-        {
-            senderName: remoteName,
-            messageString: message
-        }
+        senderName: remoteName,
+        messageString: message
     },() => {console.log("Message was received here.")} )    
 }
 
@@ -626,9 +624,9 @@ chrome.runtime.onMessage.addListener(function ({
     action,
     ...others
 }, _sender, sendResponse) {
-    if (!firebaseAppInited) {
-        initFirebaseApp();
-    }
+    //if (!firebaseAppInited) {
+        //initFirebaseApp();
+    //}
 
     switch (action) {
     case "createRoom":

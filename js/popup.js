@@ -95,6 +95,7 @@ function openChatWindow(_clickEvent){
     type: "popup"
   });
 }
+
 function createRoom(_clickEvent) {
     const roomIdElm = document.getElementById("createdRoomId");
     roomIdElm.innerText = "Creating room...";

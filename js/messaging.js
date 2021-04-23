@@ -25,8 +25,8 @@ class Time {
 }
 
 async function sendTextMessage(data) {
+    const { stringMessage } = data;
     sendData({
-        ...data,
         action: "textMessage",
     });
 }
@@ -63,8 +63,8 @@ chrome.runtime.onMessage.addListener(function ({
             });
     }
         return true;
-        break;
     case "textMessageSending":
+        console.log(stringMessage)
         const { 
             stringMessage
         } = data;
