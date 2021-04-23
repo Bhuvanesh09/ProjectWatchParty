@@ -24,10 +24,10 @@ class Time {
     }
 }
 
-async function sendTextMessage(data) {
-    const { stringMessage } = data;
+async function sendTextMessage(text) {
     sendData({
         action: "textMessage",
+        messageString: text
     });
 }
 
@@ -64,14 +64,8 @@ chrome.runtime.onMessage.addListener(function ({
     }
         return true;
     case "textMessageSending":
-        console.log(stringMessage)
-        const { 
-            stringMessage
-        } = data;
-        
-        sendTextMessage({
-            stringMessage
-        })
+        stringMessage = data.messageString; 
+        sendTextMessage(stringMessage)
             .then(() => {
                 sendResponse("success");
             });

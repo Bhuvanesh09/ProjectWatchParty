@@ -557,7 +557,8 @@ function receiveDataHandler(peerObject) {
             chrome.runtime.sendMessage({ action: "deniedController" });
             break;
         case "textMessage":
-            receivedTextMessage(message, remoteName);
+            messageText = message.messageString;
+            receivedTextMessage(messageText, remoteName);
             break;
         default:
             console.debug(`Action ${action} not matched`);
@@ -571,7 +572,6 @@ function recvData(peerConnection, remoteName) { // {{{
             newPeer = new Peer(remoteName, peerConnection, dataChannelRecv, Peer.RECEIVER_TYPE);
 
         peers.push(newPeer);
-
         dataChannelRecv.addEventListener("message", receiveDataHandler(newPeer));
     });
 } // }}}
@@ -624,9 +624,9 @@ chrome.runtime.onMessage.addListener(function ({
     action,
     ...others
 }, _sender, sendResponse) {
-    //if (!firebaseAppInited) {
-        //initFirebaseApp();
-    //}
+    if (!firebaseAppInited) {
+        initFirebaseApp();
+    }
 
     switch (action) {
     case "createRoom":

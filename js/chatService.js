@@ -76,7 +76,7 @@ const chatService = function() {
 
             chrome.runtime.sendMessage({
                 action: "textMessageSending",
-                message,
+                messageString: message.message,
             }, function (status) {
                 if (chrome.runtime.lastError) {
                     console.log("ERROR", chrome.runtime.lastError);
