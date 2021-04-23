@@ -1,4 +1,4 @@
-class Controller {
+class VideoController {
     static NO_CHANGE_THRESH = 1;
 
     type;
@@ -6,6 +6,8 @@ class Controller {
     upperThreshold;
 
     lowerThresh;
+
+    static documentURLMatchPatterns = ["https://www.youtube.com/watch?v=*"];
 
     // type : 'yt' for YouTube, 'msstream' for MS Stream, 'vimeo' for Vimeo
     constructor(type) {
@@ -126,4 +128,4 @@ class Controller {
     }
 }
 
-window.Controller = Controller;
+window.VideoController = VideoController;

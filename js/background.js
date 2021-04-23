@@ -665,7 +665,12 @@ chrome.runtime.onMessage.addListener(function ({
 });
 // }}}
 
-// TODO: "sync this video" browser action only for the controller
-// chrome.contextMenus.create();
+chrome.contextMenus.create({
+    documentUrlPatterns: VideoController.documentURLMatchPatterns,
+    onclick: (info, tab) => {
+
+    },
+    title: "Sync this video",
+});
 
 // vim: fdm=marker ts=4 sts=4 sw=4

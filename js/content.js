@@ -1,6 +1,6 @@
-/* global Controller */
+/* global VideoController */
 
-const controller = new Controller("yt");
+const controller = new VideoController("yt");
 
 setInterval(function () {
     const data = controller.getSendInfo();
