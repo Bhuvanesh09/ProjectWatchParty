@@ -1,5 +1,32 @@
-function init() {
-    initControls();
+function initMessaging() {
+    chrome.runtime.onMessage.addListener(function ({
+        action,
+        ...message
+    }, _sender, sendResponse) {
+        switch (action) {
+        case "controllerRequest": {
+            const { requesterList } = message;
+            displayRequestController(requesterList, (isAccepted) => {
+                sendResponse(isAccepted);
+            });
+        }
+            return true;
+        case "controllerName": {
+            const { controllerName } = message;
+            displayCurrentController(controllerName);
+        }
+            break;
+        case "deniedController": {
+            document.getElementById("request-controller-status").innerText = "Request denied!";
+        }
+        default:
+            console.log(`Unknown action: ${action}`);
+        }
+
+        return false;
+    });
+
+    chrome.runtime.sendMessage({ action: "sendStartupInfo" });
 }
 
 function initControls() {
@@ -75,12 +102,15 @@ function createRoom(_clickEvent) {
 }
 
 function requestController(_clickEvent) {
+    const controllerElm = document.getElementById("request-controller-status");
+    controllerElm.innerText = "Sending request....";
+
     chrome.runtime.sendMessage({ action: "requestController" }, function (ret) {
         if (chrome.runtime.lastError) {
             console.log("ERROR", chrome.runtime.lastError);
-            console.debug("bleh");
+            controllerElm.innerText = "Error accessing controller, check console logs";
         } else {
-            console.debug(`Response: ${ret}`);
+            controllerElm.innerText = ret;
         }
     });
 }
@@ -108,8 +138,6 @@ function joinRoom(_clickEvent) {
             statusElm.innerText = status;
         }
     });
-
-    // Will get
 }
 
 function exitRoom(_clickEvent) {
@@ -150,6 +178,64 @@ function testProgressBar() {
             window.clearInterval(event);
         }
     }, 200);
+}
+
+let displayRequestController,
+    initDisplayController,
+    displayCurrentController;
+
+(function () {
+    let controllerCurrent,
+        peerRequestList,
+        denyAllButton;
+
+    displayRequestController = function (peerRequestIncomingNames) {
+        while (peerRequestList.firstChild) {
+            peerRequestList.removeChild(peerRequestList.lastChild);
+        }
+
+        function accepterHandler(peerName) {
+            return function (_clickEvent) {
+                chrome.runtime.sendMessage({
+                    action: "peerRequestAcceptedOne",
+                    peerName,
+                });
+            };
+        }
+
+        for (const peerName of peerRequestIncomingNames) {
+            const acceptButton = document.createElement("button");
+            acceptButton.innerText = peerName;
+
+            acceptButton.classList.add("btn", "btn-success");
+            acceptButton.addEventListener("click", accepterHandler(peerName));
+
+            const li = document.createElement("li");
+            li.appendChild(acceptButton);
+
+            peerRequestList.appendChild(li);
+        }
+    };
+
+    displayCurrentController = function (peerName) {
+        controllerCurrent.innerText = peerName;
+    };
+
+    initDisplayController = function () {
+        peerRequestList = document.getElementById("peerRequestList");
+        denyAllButton = document.getElementById("denyAllRequests");
+        controllerCurrent = document.getElementById("current-controller");
+
+        denyAllButton.addEventListener("click", function () {
+            chrome.runtime.sendMessage({ action: "peerRequestDeniedAll" });
+        });
+    };
+}());
+
+function init() {
+    initControls();
+    initMessaging();
+    initDisplayController();
 }
 
 (function checkInit() {

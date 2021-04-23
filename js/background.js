@@ -33,7 +33,20 @@ function initFirebaseApp() {
 
 // }}}
 
-// TODO: store peer name (MY_NAME) here
+const ICEConfiguration = {
+        iceServers: [
+            {
+                urls: "turn:felicity.iiit.ac.in:3478",
+                username: "felicity",
+                credential: "5xXJa5rwSafFTpjQEWDdPfRSdFaeKmIy",
+            },
+        ],
+    },
+    peers = [];
+
+let MY_NAME,
+    currentControllerPeerObject = null;
+
 class Peer { // {{{
     static SENDER_TYPE = "sender";
 
@@ -59,35 +72,138 @@ class Peer { // {{{
     }
 
     isSendable() {
-        return this.dataChannel.readyState === "open" && this.type === Peer.SENDER_TYPE;
+        return this.dataChannel.readyState === "open";
     }
 
     getDescription() {
         return this.peerName;
-
-        // const desc = this.peer.currentRemoteDescription;
-        //
-        // return `${desc.type} ${desc.sdp}`;
     }
 
-    send(packet) {
+    sendStringified(packet) {
         console.log(`rtc> Sending message: ${packet} to ${this.getDescription()}`);
         this.dataChannel.send(packet);
     }
+
+    send(packet) {
+        this.sendStringified(JSON.stringify(packet));
+    }
+
+    sendNewController() {
+        this.send({
+            action: Controller.GIVE_TYPE,
+            controllerName: currentControllerPeerObject.peerName,
+        });
+    }
 } // }}}
 
-const ICEConfiguration = {
-        iceServers: [
-            {
-                urls: "turn:felicity.iiit.ac.in:3478",
-                username: "felicity",
-                credential: "5xXJa5rwSafFTpjQEWDdPfRSdFaeKmIy",
-            },
-        ],
-    },
-    peers = [];
+class Controller {
+    static REQUEST_TYPE = "requestController";
 
-let MY_NAME;
+    static GIVE_TYPE = "giveController";
+
+    static DENY_TYPE = "denyController";
+
+    static requests = [];
+
+    static notifyOfCurrentController() {
+        chrome.runtime.sendMessage({
+            action: "controllerName",
+            controllerName: currentControllerPeerObject ? currentControllerPeerObject.peerName : "No controller yet",
+        });
+    }
+
+    static setController(newControllerName, notifyPeer = false) {
+        if (!newControllerName) {
+            return;
+        }
+
+        console.debug(`Controller: setting new controller to ${newControllerName}`);
+
+        if (newControllerName === MY_NAME) {
+            this.meController();
+        } else {
+            let found = false;
+
+            for (const peer of peers) {
+                if (peer.peerName === newControllerName) {
+                    found = true;
+
+                    currentControllerPeerObject = peer;
+                    if (notifyPeer) {
+                        currentControllerPeerObject.sendNewController();
+                    }
+                    break;
+                }
+            }
+
+            if (!found) {
+                console.error(`Controller: Received name ${newControllerName} but not found in peer list`);
+                return;
+            }
+        }
+
+        this.notifyOfCurrentController();
+    }
+
+    static meController() {
+        console.debug("Setting myself the controller");
+        currentControllerPeerObject = new Peer(MY_NAME);
+
+        // broadcast my being the new controller to all my peers
+        for (const peer of peers) {
+            peer.sendNewController();
+        }
+    }
+
+    static addNewRequest(peerObject) {
+        Controller.requests.push(peerObject);
+    }
+
+    static notifyOfRequestList() {
+        chrome.runtime.sendMessage({
+            action: "controllerRequest",
+            requesterList: Controller.requests.map((peerObj) => peerObj.peerName),
+        });
+    }
+
+    static clearRequestList() {
+        for (const peerObj of this.requests) {
+            if (peerObj.peerName !== currentControllerPeerObject.peerName) {
+                peerObj.send({ action: Controller.DENY_TYPE });
+            }
+        }
+        this.requests = [];
+        this.notifyOfRequestList();
+    }
+
+    static async receivedRequest(peerObject) {
+        for (const peerReqs of this.requests) {
+            if (peerReqs.peerName === peerObject.peerName) {
+                return;
+            }
+        }
+        const remoteDesc = peerObject.getDescription();
+
+        console.debug(`Controller: Received request from: ${remoteDesc}`);
+
+        this.addNewRequest(peerObject);
+        this.notifyOfRequestList();
+    }
+
+    static async requestControllerAccess(callback) {
+        if (currentControllerPeerObject.peerName === MY_NAME) {
+            callback("You are already a controller");
+        } else {
+            const msg = { action: Controller.REQUEST_TYPE };
+
+            console.debug(`Sending request ${msg} to controller: ${currentControllerPeerObject.getDescription()}`);
+
+            currentControllerPeerObject.send(msg);
+
+            callback("Request sent");
+        }
+    }
+}
 
 // TODO: add an interface to allow the user to set this
 chrome.storage.local.get("username", (username) => {
@@ -143,16 +259,43 @@ function iceCandidateCollector(peerConnection, candidateCollection) {
 }
 
 async function advertiseOfferForPeers(selfRef) { // {{{
+    let sendPrepData;
+
+    (function closureForPrepData() {
+        let initCount = 0,
+            peerObject = null,
+            dataChannel = null;
+
+        sendPrepData = function (peerObjectRecv, dataChannelRecv) {
+            if (peerObjectRecv) {
+                peerObject = peerObjectRecv;
+            }
+            if (dataChannelRecv) {
+                dataChannel = dataChannelRecv;
+            }
+
+            initCount++;
+
+            if (initCount === 2) {
+                dataChannel.addEventListener("message", receiveDataHandler(peerObject));
+
+                peerObject.send({
+                    action: "initInfo",
+                    controllerName: currentControllerPeerObject.peerName,
+                });
+            }
+        };
+    }());
+
     const peerConnection = new RTCPeerConnection(ICEConfiguration);
     registerPeerConnectionListeners(peerConnection);
     console.debug("Create PeerConnection with configuration: ", ICEConfiguration);
 
     const dataChannel = peerConnection.createDataChannel("TimestampDataChannel");
-    dataChannel.addEventListener("message", (_event) => {
-        console.log("MESSAGE: ", _event.data);
-    });
+
     dataChannel.addEventListener("open", (_event) => {
         console.log(_event, "Datachannel opened");
+        sendPrepData(undefined, dataChannel);
     });
 
     const callerCandidatesCollection = await selfRef.collection("callerCandidates");
@@ -224,6 +367,8 @@ async function advertiseOfferForPeers(selfRef) { // {{{
                             const newPeer = new Peer(remotePeerName, peerConnection, dataChannel, Peer.SENDER_TYPE);
                             peers.push(newPeer);
 
+                            sendPrepData(newPeer);
+
                             advertiseOfferForPeers(selfRef);
 
                             const calleeCandidates = await selfRef.collection("calleeCandidates")
@@ -257,6 +402,8 @@ async function createRoom() { // {{{
     const selfRef = await roomRef.collection("peers")
         .doc(MY_NAME);
 
+    // the creator of the room is its initial controller
+    Controller.setController(MY_NAME);
     advertiseOfferForPeers(selfRef);
 
     ROOM_ID.set(roomRef.id);
@@ -282,6 +429,8 @@ function registerPeerConnectionListeners(peerConnection) { // {{{
         console.debug(
             `ICE connection state change: ${peerConnection.iceConnectionState}`,
         );
+        // TODO: listen for disconnected here and drop controller accordingly
+        // https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/connectionState
     });
 } // }}}
 
@@ -373,41 +522,54 @@ async function sendData(object) {
 
     for (const peer of peers) {
         if (peer.isSendable()) {
-            peer.send(packet);
+            peer.sendStringified(packet);
         }
     }
 }
 
-// TODO
-async function requestControllerAccess(_callback) {
-    sendData({ action: "controller" });
+function receiveDataHandler(peerObject) {
+    const remoteName = peerObject.peerName;
+
+    return (eventMessage) => {
+        console.log(`rtc> Received Message: ${eventMessage.data} from ${remoteName}`);
+
+        const {
+            action,
+            ...message
+        } = JSON.parse(eventMessage.data);
+
+        switch (action) {
+        case "initInfo":
+            // TODO: profile picture and names go here
+
+        case Controller.GIVE_TYPE: {
+            const { controllerName } = message;
+            Controller.setController(controllerName);
+        }
+            break;
+        case "synctime":
+            Time.receive(message);
+            break;
+        case Controller.REQUEST_TYPE:
+            Controller.receivedRequest(peerObject);
+            break;
+        case Controller.DENY_TYPE:
+            chrome.runtime.sendMessage({ action: "deniedController" });
+            break;
+        default:
+            console.debug(`Action ${action} not matched`);
+        }
+    };
 }
 
 function recvData(peerConnection, remoteName) { // {{{
     peerConnection.addEventListener("datachannel", (event) => {
-        const dataChannelRecv = event.channel;
+        const dataChannelRecv = event.channel,
+            newPeer = new Peer(remoteName, peerConnection, dataChannelRecv, Peer.RECEIVER_TYPE);
 
-        dataChannelRecv.addEventListener("message", (eventMessage) => {
-            console.log(`rtc> Received Message: ${eventMessage.data} from ${remoteName}`);
+        peers.push(newPeer);
 
-            const {
-                action,
-                ...message
-            } = JSON.parse(eventMessage.data);
-
-            switch (action) {
-            case "synctime":
-                recvTime(message);
-                break;
-            case "controller":
-                controllerRequested(message);
-                break;
-            default:
-                console.debug(`Action ${action} not matched`);
-            }
-        });
-
-        peers.push(new Peer(remoteName, peerConnection, dataChannelRecv, Peer.RECEIVER_TYPE));
+        dataChannelRecv.addEventListener("message", receiveDataHandler(newPeer));
     });
 } // }}}
 
@@ -476,16 +638,39 @@ chrome.runtime.onMessage.addListener(function ({
         });
         return true;
     case "requestController":
-        requestControllerAccess((status) => {
+        Controller.requestControllerAccess((status) => {
             sendResponse(status);
         });
+
         return true;
+    case "sendStartupInfo":
+        Controller.notifyOfCurrentController();
+        Controller.notifyOfRequestList();
+
+        break;
+    case "peerRequestDeniedAll":
+        Controller.clearRequestList();
+        break;
+    case "peerRequestAcceptedOne": {
+        const { peerName } = others;
+        Controller.setController(peerName, true);
+        Controller.clearRequestList();
+    }
+        break;
     default:
-        console.debug("Unknown action requested!");
+        console.debug(`Unknown action: ${action} requested!`);
     }
 
     return false;
 });
 // }}}
+
+chrome.contextMenus.create({
+    documentUrlPatterns: VideoController.documentURLMatchPatterns,
+    onclick: (info, tab) => {
+
+    },
+    title: "Sync this video",
+});
 
 // vim: fdm=marker ts=4 sts=4 sw=4

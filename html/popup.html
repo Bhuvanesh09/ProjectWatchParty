@@ -25,11 +25,34 @@
         </div>
     </div>
     <div class="row m-2">
-        <button id="request-controller" class="btn btn-primary">Request controller</button>
-    </div>
-    <div class="row m-2">
         <button id="hangUp" class="btn btn-primary">Terminate Session</button>
     </div>
+
+    <hr>
+
+    <div class="row m-2">
+        <div class="row m-2">
+            <button id="request-controller" class="btn btn-primary">Request controller</button>
+        </div>
+
+        <div class="row m-2">
+            Request status: <label for="request-controller" id="request-controller-status"></label>
+        </div>
+
+        <div class="row m-2">
+            Current controller: <label for="request-controller" id="current-controller"></label>
+        </div>
+
+        <div class="row m-2">
+            Allow request from:
+
+            <ul id="peerRequestList"></ul>
+
+            <button id="denyAllRequests" class="btn btn-danger">Deny all</button>
+        </div>
+    </div>
+
+    <hr>
 
     <div id="syncBar">
 
