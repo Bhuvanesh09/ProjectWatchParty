@@ -30,6 +30,9 @@ const chatService = function() {
     }
     
     return {
+        addMessage: function(messageData) {
+            messageArray.push(messageData);
+        },
         fetchMessages: function() {
             $.each(messageArray, function(index, value) {
                 let messageList;
@@ -70,6 +73,18 @@ const chatService = function() {
         },
         sendMessage: function(message){
             $('#send-message-spinner').show();
+
+            chrome.runtime.sendMessage({
+                action: "textMessageSending",
+                message,
+            }, function (status) {
+                if (chrome.runtime.lastError) {
+                    console.log("ERROR", chrome.runtime.lastError);
+                } else {
+                    //statusElm.innerText = status;
+                    //Messaage send successfully
+                }
+            });
             messageArray.push(message);
         },
         onMessageReceived: function() {

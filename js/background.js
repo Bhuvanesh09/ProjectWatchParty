@@ -556,6 +556,9 @@ function receiveDataHandler(peerObject) {
         case Controller.DENY_TYPE:
             chrome.runtime.sendMessage({ action: "deniedController" });
             break;
+        case "textMessage":
+            receivedTextMessage(message, remoteName);
+            break;
         default:
             console.debug(`Action ${action} not matched`);
         }
@@ -572,6 +575,18 @@ function recvData(peerConnection, remoteName) { // {{{
         dataChannelRecv.addEventListener("message", receiveDataHandler(newPeer));
     });
 } // }}}
+
+function receivedTextMessage(message, remoteName) {
+    console.log("${message} from ${remoteName}`)
+
+    chrome.runtime.sendMessage({
+        action: "textMessageReceiving",
+        {
+            senderName: remoteName,
+            messageString: message
+        }
+    },() => {console.log("Message was received here.")} )    
+}
 
 function hangUp(callback) { // {{{
     for (const peerConnection of peers) {

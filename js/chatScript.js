@@ -20,3 +20,30 @@ $(document).ready(function() {
         $('#message-form').trigger('reset');
     });
 });
+chrome.runtime.onMessage.addListener(function ({
+        action,
+        ...others
+    }, _sender, sendResponse) {
+
+    switch(action){
+        case "textMessageReceiving":
+            addMessageToChatService(others);
+            break;
+        default:
+            //console.log("Unknown action, please help")
+    }
+    return false;
+});
+
+function addMessageToChatService(data) {
+    chatService.addMessage({
+                            username: data.senderName,
+                            message: data.messageString
+                            })    
+    chatService.onMessageReceived();
+}
+
+
+
+
+    

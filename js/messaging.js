@@ -24,6 +24,14 @@ class Time {
     }
 }
 
+async function sendTextMessage(data) {
+    sendData({
+        ...data,
+        action: "textMessage",
+    });
+}
+
+
 function escapeRegex(string) {
     return string.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
 }
@@ -55,6 +63,20 @@ chrome.runtime.onMessage.addListener(function ({
             });
     }
         return true;
+        break;
+    case "textMessageSending":
+        const { 
+            stringMessage
+        } = data;
+        
+        sendTextMessage({
+            stringMessage
+        })
+            .then(() => {
+                sendResponse("success");
+            });
+        return true;
+        break;
     default:
         console.log(`Action ${action} unknown!`);
     }
