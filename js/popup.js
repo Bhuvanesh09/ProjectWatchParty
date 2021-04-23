@@ -16,12 +16,17 @@ function initMessaging() {
             displayCurrentController(controllerName);
         }
             break;
+        case "deniedController": {
+            document.getElementById("request-controller-status").innerText = "Request denied!";
+        }
         default:
             console.log(`Unknown action: ${action}`);
         }
 
         return false;
     });
+
+    chrome.runtime.sendMessage({ action: "sendStartupInfo" });
 }
 
 function initControls() {
@@ -97,7 +102,7 @@ function createRoom(_clickEvent) {
 }
 
 function requestController(_clickEvent) {
-    const controllerElm = document.getElementById("current-controller");
+    const controllerElm = document.getElementById("request-controller-status");
     controllerElm.innerText = "Sending request....";
 
     chrome.runtime.sendMessage({ action: "requestController" }, function (ret) {
@@ -133,8 +138,6 @@ function joinRoom(_clickEvent) {
             statusElm.innerText = status;
         }
     });
-
-    // Will get
 }
 
 function exitRoom(_clickEvent) {
@@ -182,59 +185,50 @@ let displayRequestController,
     displayCurrentController;
 
 (function () {
-    let peerNames,
-        controllerCurrent,
-        requesterTableBody;
+    let controllerCurrent,
+        peerRequestList,
+        denyAllButton;
 
-    displayRequestController = function (peerNameList) {
-        while (requesterTableBody.firstChild) {
-            requesterTableBody.removeChild(requesterTableBody.lastChild);
+    displayRequestController = function (peerRequestIncomingNames) {
+        while (peerRequestList.firstChild) {
+            peerRequestList.removeChild(peerRequestList.lastChild);
         }
 
-        function replier(peerNameActual, status) {
+        function accepterHandler(peerName) {
             return function (_clickEvent) {
-                // TODO: send msg to background
+                chrome.runtime.sendMessage({
+                    action: "peerRequestAcceptedOne",
+                    peerName,
+                });
             };
         }
 
-        for (const peerName of peerNames) {
-            const span = document.createElement("span");
-            span.innerText = peerName;
-
-            const acceptButton = document.createElement("button"),
-                rejectButton = document.createElement("button");
+        for (const peerName of peerRequestIncomingNames) {
+            const acceptButton = document.createElement("button");
+            acceptButton.innerText = peerName;
 
             acceptButton.classList.add("btn", "btn-success");
-            rejectButton.classList.add("btn", "btn-danger");
-            acceptButton.addEventListener("click", replier(peerName, true));
-            rejectButton.addEventListener("click", replier(peerName, false));
+            acceptButton.addEventListener("click", accepterHandler(peerName));
 
-            const tr = document.createElement("tr");
+            const li = document.createElement("li");
+            li.appendChild(acceptButton);
 
-            let td = document.createElement("td");
-            td.appendChild(span);
-            tr.appendChild(td);
-
-            td = document.createElement("td");
-            td.appendChild(acceptButton);
-            tr.appendChild(td);
-
-            td = document.createElement("td");
-            td.appendChild(rejectButton);
-            tr.appendChild(td);
-
-            requesterTableBody.appendChild(tr);
+            peerRequestList.appendChild(li);
         }
     };
 
     displayCurrentController = function (peerName) {
         controllerCurrent.innerText = peerName;
-        displayRequestController([]);
     };
 
     initDisplayController = function () {
-        requesterTableBody = document.getElementById("controller-requester");
+        peerRequestList = document.getElementById("peerRequestList");
+        denyAllButton = document.getElementById("denyAllRequests");
         controllerCurrent = document.getElementById("current-controller");
+
+        denyAllButton.addEventListener("click", function () {
+            chrome.runtime.sendMessage({ action: "peerRequestDeniedAll" });
+        });
     };
 }());
 

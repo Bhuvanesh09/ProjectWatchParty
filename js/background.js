@@ -87,6 +87,13 @@ class Peer { // {{{
     send(packet) {
         this.sendStringified(JSON.stringify(packet));
     }
+
+    sendNewController() {
+        this.send({
+            action: Controller.GIVE_TYPE,
+            controllerName: currentControllerPeerObject.peerName,
+        });
+    }
 } // }}}
 
 class Controller {
@@ -94,17 +101,21 @@ class Controller {
 
     static GIVE_TYPE = "giveController";
 
+    static DENY_TYPE = "denyController";
+
     static requests = [];
 
-    static setController(newControllerName) {
+    static notifyOfCurrentController() {
+        chrome.runtime.sendMessage({
+            action: "controllerName",
+            controllerName: currentControllerPeerObject ? currentControllerPeerObject.peerName : "No controller yet",
+        });
+    }
+
+    static setController(newControllerName, notifyPeer = false) {
         if (!newControllerName) {
             return;
         }
-
-        chrome.runtime.sendMessage({
-            action: "controllerName",
-            controllerName: newControllerName,
-        });
 
         console.debug(`Controller: setting new controller to ${newControllerName}`);
 
@@ -116,15 +127,22 @@ class Controller {
             for (const peer of peers) {
                 if (peer.peerName === newControllerName) {
                     found = true;
+
                     currentControllerPeerObject = peer;
+                    if (notifyPeer) {
+                        currentControllerPeerObject.sendNewController();
+                    }
                     break;
                 }
             }
 
             if (!found) {
                 console.error(`Controller: Received name ${newControllerName} but not found in peer list`);
+                return;
             }
         }
+
+        this.notifyOfCurrentController();
     }
 
     static meController() {
@@ -133,26 +151,43 @@ class Controller {
 
         // broadcast my being the new controller to all my peers
         for (const peer of peers) {
-            peer.send({
-                action: Controller.GIVE_TYPE,
-                controllerName: currentControllerPeerObject.peerName,
-            });
+            peer.sendNewController();
         }
     }
 
     static addNewRequest(peerObject) {
-        Controller.requests.push(peerObject.peerName);
+        Controller.requests.push(peerObject);
+    }
+
+    static notifyOfRequestList() {
+        chrome.runtime.sendMessage({
+            action: "controllerRequest",
+            requesterList: Controller.requests.map((peerObj) => peerObj.peerName),
+        });
+    }
+
+    static clearRequestList() {
+        for (const peerObj of this.requests) {
+            if (peerObj.peerName !== currentControllerPeerObject.peerName) {
+                peerObj.send({ action: Controller.DENY_TYPE });
+            }
+        }
+        this.requests = [];
+        this.notifyOfRequestList();
     }
 
     static async receivedRequest(peerObject) {
+        for (const peerReqs of this.requests) {
+            if (peerReqs.peerName === peerObject.peerName) {
+                return;
+            }
+        }
         const remoteDesc = peerObject.getDescription();
 
         console.debug(`Controller: Received request from: ${remoteDesc}`);
 
-        chrome.runtime.sendMessage({
-            action: "controllerRequest",
-            requesterList: Controller.requests,
-        });
+        this.addNewRequest(peerObject);
+        this.notifyOfRequestList();
     }
 
     static async requestControllerAccess(callback) {
@@ -164,6 +199,8 @@ class Controller {
             console.debug(`Sending request ${msg} to controller: ${currentControllerPeerObject.getDescription()}`);
 
             currentControllerPeerObject.send(msg);
+
+            callback("Request sent");
         }
     }
 }
@@ -366,7 +403,7 @@ async function createRoom() { // {{{
         .doc(MY_NAME);
 
     // the creator of the room is its initial controller
-    currentControllerPeerObject = new Peer(MY_NAME);
+    Controller.setController(MY_NAME);
     advertiseOfferForPeers(selfRef);
 
     ROOM_ID.set(roomRef.id);
@@ -516,6 +553,9 @@ function receiveDataHandler(peerObject) {
         case Controller.REQUEST_TYPE:
             Controller.receivedRequest(peerObject);
             break;
+        case Controller.DENY_TYPE:
+            chrome.runtime.sendMessage({ action: "deniedController" });
+            break;
         default:
             console.debug(`Action ${action} not matched`);
         }
@@ -603,18 +643,19 @@ chrome.runtime.onMessage.addListener(function ({
         });
 
         return true;
-    case "controllerRequestUpdate":
-        // TODO:
-        {
-            if (isAccepted) {
-                peerObject.send({
-                    action: Controller.GIVE_TYPE,
-                    controllerName: peerObject.peerName,
-                });
-            } else {
-                console.debug("Controller request was rejected! :(");
-            }
-        }
+    case "sendStartupInfo":
+        Controller.notifyOfCurrentController();
+        Controller.notifyOfRequestList();
+
+        break;
+    case "peerRequestDeniedAll":
+        Controller.clearRequestList();
+        break;
+    case "peerRequestAcceptedOne": {
+        const { peerName } = others;
+        Controller.setController(peerName, true);
+        Controller.clearRequestList();
+    }
         break;
     default:
         console.debug(`Unknown action: ${action} requested!`);
@@ -623,5 +664,8 @@ chrome.runtime.onMessage.addListener(function ({
     return false;
 });
 // }}}
+
+// TODO: "sync this video" browser action only for the controller
+// chrome.contextMenus.create();
 
 // vim: fdm=marker ts=4 sts=4 sw=4

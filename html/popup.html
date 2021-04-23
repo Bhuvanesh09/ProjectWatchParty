@@ -36,26 +36,19 @@
         </div>
 
         <div class="row m-2">
+            Request status: <label for="request-controller" id="request-controller-status"></label>
+        </div>
+
+        <div class="row m-2">
             Current controller: <label for="request-controller" id="current-controller"></label>
         </div>
 
         <div class="row m-2">
             Allow request from:
-            <table>
-                <thead>
-                <th>Requester</th>
-                <th></th>
-                <th></th>
-                </thead>
-                <tbody id="requester-list">
 
-                </tbody>
-            </table>
-             <span id="controller-requester"></span>
-            <div class="btn-group me-2">
-                <button id="allowRequest" class="btn-success">Allow</button>
-                <button id="denyRequest" class="btn-danger">Deny</button>
-            </div>
+            <ul id="peerRequestList"></ul>
+
+            <button id="denyAllRequests" class="btn btn-danger">Deny all</button>
         </div>
     </div>
 
