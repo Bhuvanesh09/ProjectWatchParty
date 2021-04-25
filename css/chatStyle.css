@@ -2,9 +2,15 @@
   box-sizing: border-box;
 }
 
+@font-face {
+    font-family: 'Roboto';
+    src: url('../fonts/Roboto-Regular.ttf');
+}
+
 body {
   color: #333;
   font-size: 13px;
+  font-family: 'Roboto';
   margin: 0;
   width: 100%;
   height: 100vh;
@@ -12,7 +18,7 @@ body {
 }
 
 h3 {
-  font-family: 'Abril Fatface';
+  /*font-family: 'Abril Fatface';*/
   margin-bottom: 20px;
 }
 
@@ -113,7 +119,7 @@ nav {
   background: #fff;
   color: black;
   font-size: 14px;
-  padding: 0 50px;
+  padding: 0 20px;
   display: flex;
   justify-content: space-between;
 }
@@ -147,7 +153,7 @@ nav {
 
 .empty-chat h2 {
   color: #1546dc;
-  font-family: 'Abril Fatface';
+  /*font-family: 'Abril Fatface';*/
   padding: 0;
   font-size: 2rem;
   margin: 25px auto 15px;
@@ -168,7 +174,7 @@ nav {
   max-width: 800px;
   width: calc(100% - 20px);
   height: 588px;
-  font-family: sans-serif;
+  /*font-family: sans-serif;*/
   letter-spacing: 0.5px;
   background: #f8f9fb;
   padding: 0 !important;
@@ -192,7 +198,8 @@ nav {
 
 .active {
   font-family: 'Roboto';
-  width: 120px;
+  font-size: 2rem;
+  /*width: 120px;*/
   float: left;
 }
 
@@ -507,8 +514,9 @@ nav .spinner {
   .outgoing-chats-msg p::before {
     display: none;
   }
-  .welcome-message {
+  #loggedInUsername {
     display: none;
+    margin-right: 2vw;
   }
 }
 
