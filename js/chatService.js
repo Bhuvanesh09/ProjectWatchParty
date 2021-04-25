@@ -37,7 +37,7 @@ const chatService = function() {
             $.each(messageArray, function(index, value) {
                 let messageList;
 
-                if (value.username !== "oluyemi") {
+                if (value.username !== "self") {
                     messageList = `
                     <div class="received-chats old-chats">
                     <div class="received-chats-img">
@@ -95,7 +95,7 @@ const chatService = function() {
             $.each(messageArray, function(index, value) {
                 let messageList;
 
-                if (value.username !== "oluyemi") {
+                if (value.username !== "self") {
                     messageList = `
                     <div class="received-chats old-chats">
                     <div class="received-chats-img">

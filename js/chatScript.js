@@ -7,7 +7,7 @@ $(document).ready(function() {
         let message = $('#input-text').val(); 
 
         let text = { 
-            username: "oluyemi",
+            username: "self",
             message 
         } 
 
@@ -36,6 +36,7 @@ chrome.runtime.onMessage.addListener(function ({
 });
 
 function addMessageToChatService(data) {
+    $('.old-chats').remove();
     chatService.addMessage({
                             username: data.senderName,
                             message: data.messageString

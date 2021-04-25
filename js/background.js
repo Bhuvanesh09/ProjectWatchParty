@@ -7,6 +7,7 @@
 
 // firebase init {{{
 let firebaseAppInited = false;
+let messagesHistory = [];
 
 function initFirebaseApp() {
     const firebaseConfig = {
