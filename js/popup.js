@@ -47,6 +47,25 @@ function initControls() {
     openChatBtn.addEventListener("click", openChatWindow);
 }
 
+function checkAlreadySet(currentName) {
+    console.log("current name =" + currentName);
+    if(currentName != null){
+        document.getElementById("usernameInput").value = currentName;
+    } else {
+        usernameChanged(document.getElementById("usernameInput").value);
+    }
+    document.getElementById("usernameInput").onchange = function() {
+        usernameChanged(document.getElementById("usernameInput").value);
+    };
+}
+function initUsername() {
+    return new Promise((resolve, reject) => {
+        chrome.storage.local.get("username", (res) => {
+            resolve(res.username);
+        });
+    });
+}
+
 function initSyncBar(pplData) {
     // Init for the progress bar.
     // const bar = $("#syncBar");
@@ -88,6 +107,16 @@ function updateProgress(pplData) {
         }
     }
 }
+
+function usernameChanged(newUsername){
+    chrome.storage.local.set({
+        username: newUsername
+    }); 
+    console.log("Local username changed to:" + newUsername);
+    chrome.runtime.sendMessage({
+        action: "updateUsername"
+    });
+};
 
 function openChatWindow(_clickEvent){
     chrome.windows.create({
@@ -246,6 +275,10 @@ function init() {
     initControls();
     initMessaging();
     initDisplayController();
+    initUsername()
+        .then((currentName) => {
+            checkAlreadySet(currentName)
+        });
 }
 
 (function checkInit() {
