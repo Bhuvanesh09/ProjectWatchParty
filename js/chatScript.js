@@ -44,6 +44,12 @@ function addMessageToChatService(data) {
     chatService.onMessageReceived();
 }
 
+window.addEventListener('load', function() {
+    chrome.runtime.sendMessage({
+        action: "populateChatWindow"    
+    });
+});
+
 
 
 

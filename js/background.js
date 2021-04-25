@@ -7,7 +7,7 @@
 
 // firebase init {{{
 let firebaseAppInited = false;
-let messagesHistory = [];
+let messageHistory = [];
 
 function initFirebaseApp() {
     const firebaseConfig = {
@@ -559,6 +559,7 @@ function receiveDataHandler(peerObject) {
             break;
         case "textMessage":
             messageText = message.messageString;
+            addToHistory(remoteName, messageText);
             receivedTextMessage(messageText, remoteName);
             break;
         default:
@@ -576,6 +577,23 @@ function recvData(peerConnection, remoteName) { // {{{
         dataChannelRecv.addEventListener("message", receiveDataHandler(newPeer));
     });
 } // }}}
+
+function addToHistory(sender, messageString) {
+    messageHistory.push({
+                        sender: sender,
+                        messageString: messageString
+                        });
+}
+
+function populateChatWindow() {
+    for(message of messageHistory){
+        chrome.runtime.sendMessage({
+            action: "textMessageReceiving",
+            senderName: message.sender,
+            messageString: message.messageString
+        },() => {console.log("Message was received here.")} )    
+    };
+}
 
 function receivedTextMessage(message, remoteName) {
     console.log(`${message} from ${remoteName}`)

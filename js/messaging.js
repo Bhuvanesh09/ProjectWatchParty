@@ -65,12 +65,15 @@ chrome.runtime.onMessage.addListener(function ({
         return true;
     case "textMessageSending":
         stringMessage = data.messageString; 
+        addToHistory("self", stringMessage);
         sendTextMessage(stringMessage)
             .then(() => {
                 sendResponse("success");
             });
         return true;
         break;
+    case "populateChatWindow":
+        populateChatWindow();
     default:
         console.log(`Action ${action} unknown!`);
     }
