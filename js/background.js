@@ -390,6 +390,12 @@ async function advertiseOfferForPeers(selfRef) { // {{{
     // }}}
 } // }}}
 
+function updateUsername() {
+    chrome.storage.local.get("username", (username) => {
+        MY_NAME = username.username;
+    });
+}
+
 async function createRoom() { // {{{
     const roomRef = firebase.firestore()
         .collection("rooms")
@@ -689,6 +695,8 @@ chrome.runtime.onMessage.addListener(function ({
         Controller.clearRequestList();
     }
         break;
+    case "updateUsername":
+        updateUsername();
     default:
         console.debug(`Unknown action: ${action} requested!`);
     }
