@@ -350,12 +350,12 @@ but not found in peer list`);
         callback(true);
     }
 
-    sendStartupInfoPopup() {
+    sendSessionInfoPopup() {
         Controller.notifyOfCurrentController();
         Controller.notifyOfRequestList();
 
         chrome.runtime.sendMessage({
-            action: "startupInfo",
+            action: "sessionInfo",
             state: this.state,
             roomId: this.getRoomId(),
             url: this.roomData.videoURL,
@@ -806,8 +806,8 @@ chrome.runtime.onMessage.addListener(function ({
         });
 
         return true;
-    case "sendStartupInfo":
-        appState.sendStartupInfoPopup();
+    case "sendSessionInfo":
+        appState.sendSessionInfoPopup();
 
         break;
     case "peerRequestDeniedAll":
@@ -849,5 +849,9 @@ chrome.contextMenus.create({
     },
     title: "Sync this video",
 });
+
+//SENDING THE CURRENT STATE EACH SECOND
+
+setInterval(() => { appState.sendSessionInfoPopup(); }, 1000);
 
 // vim: fdm=marker ts=4 sts=4 sw=4

@@ -1,10 +1,35 @@
-const AppState = Object.freeze({
+const StateKinds = Object.freeze({
     ALONE: 0,
     UNFOLLOW: 1,
     FOLLOW: 2,
 });
 
 let currState;
+let currentControllerGlobal;
+
+function modifyDisplayOnState(){
+    if(currState === StateKinds.ALONE) {
+        $("#hangUp").addClass("hide"); 
+        $("#toggle-follow-btn").addClass("hide"); 
+        $("#controller-elements").addClass("hide");
+        $("#openChatWindow").addClass("hide"); 
+    }
+    else {
+        $("#joinSession").addClass("hide"); 
+
+        $("#hangUp").removeClass("hide"); 
+        $("#controller-elements").removeClass("hide");
+        $("#openChatWindow").removeClass("hide"); 
+        $("#toggle-follow-btn").removeClass("hide"); 
+
+        if(currState === StateKinds.FOLLOW){
+            $("#syncBar").addClass("hide");
+        }
+        else {
+            $("#syncBar").removeClass("hide");
+        }
+    }
+}
 
 function initMessaging() {
     chrome.runtime.onMessage.addListener(function ({
@@ -28,7 +53,7 @@ function initMessaging() {
             document.getElementById("request-controller-status").innerText = "Request denied!";
             break;
             // TODO: use for profile picture, roomId, etc.
-        case "startupInfo": {
+        case "sessionInfo": {
             // @bhuvanesh
             const {
                 roomId,
@@ -37,6 +62,7 @@ function initMessaging() {
             } = message;
             console.debug("Received data", roomId, state, url);
             currState = state;
+            modifyDisplayOnState();
         }
             break;
         default:
@@ -46,7 +72,7 @@ function initMessaging() {
         return false;
     });
 
-    chrome.runtime.sendMessage({ action: "sendStartupInfo" });
+    chrome.runtime.sendMessage({ action: "sendSessionInfo" });
 }
 
 function initControls() {

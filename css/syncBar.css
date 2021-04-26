@@ -37,3 +37,7 @@ div#syncBar {
     border: none;
 }
 
+.hide {
+    display: none !important;
+}
+
