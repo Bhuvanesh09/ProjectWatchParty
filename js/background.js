@@ -177,6 +177,18 @@ class AppState {
 
     personalData;
 
+    prepareInitInfo() {
+        return {
+            action: "initInfo",
+            controllerName: this.getCurrentControllerName(),
+        };
+    }
+
+    static receiveInitInfo(message) {
+        const { controllerName } = message;
+        Controller.setController(controllerName);
+    }
+
     addPeer(newPeer) {
         this.roomData.peers.push(newPeer);
     }
@@ -317,6 +329,11 @@ but not found in peer list`);
 
         callback(true);
     }
+
+    static sendStartupInfoPopup() {
+        Controller.notifyOfCurrentController();
+        Controller.notifOfRequestList();
+    }
 }
 
 appState = new AppState();
@@ -366,10 +383,7 @@ async function advertiseOfferForPeers(selfRef) { // {{{
             if (initCount === 2) {
                 dataChannel.addEventListener("message", receiveDataHandler(peerObject));
 
-                peerObject.send({
-                    action: "initInfo",
-                    controllerName: appState.getCurrentControllerName(),
-                });
+                peerObject.send(appState.prepareInitInfo());
             }
         };
     }());
@@ -635,10 +649,8 @@ function receiveDataHandler(peerObject) {
         case "initInfo":
             // TODO: profile picture and names go here
             // eslint-disable-next-line no-fallthrough
-        case Controller.GIVE_TYPE: {
-            const { controllerName } = message;
-            Controller.setController(controllerName);
-        }
+        case Controller.GIVE_TYPE:
+            AppState.receiveInitInfo(message);
             break;
         case "synctime":
             // eslint-disable-next-line no-undef
@@ -742,8 +754,7 @@ chrome.runtime.onMessage.addListener(function ({
 
         return true;
     case "sendStartupInfo":
-        Controller.notifyOfCurrentController();
-        Controller.notifyOfRequestList();
+        AppState.sendStartupInfoPopup();
 
         break;
     case "peerRequestDeniedAll":
