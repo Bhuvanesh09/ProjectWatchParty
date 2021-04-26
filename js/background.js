@@ -6,8 +6,8 @@
 //        even if this is handled, there might be some race conditions
 
 // firebase init {{{
-let firebaseAppInited = false;
-let messageHistory = [];
+let firebaseAppInited = false,
+    messageHistory = [];
 
 function initFirebaseApp() {
     const firebaseConfig = {
@@ -563,10 +563,11 @@ function receiveDataHandler(peerObject) {
         case Controller.DENY_TYPE:
             chrome.runtime.sendMessage({ action: "deniedController" });
             break;
-        case "textMessage":
-            messageText = message.messageString;
+        case "textMessage": {
+            const messageText = message.messageString;
             addToHistory(remoteName, messageText);
             receivedTextMessage(messageText, remoteName);
+        }
             break;
         default:
             console.debug(`Action ${action} not matched`);
@@ -586,29 +587,29 @@ function recvData(peerConnection, remoteName) { // {{{
 
 function addToHistory(sender, messageString) {
     messageHistory.push({
-                        sender: sender,
-                        messageString: messageString
-                        });
+        sender,
+        messageString,
+    });
 }
 
 function populateChatWindow() {
-    for(message of messageHistory){
+    for (const message of messageHistory) {
         chrome.runtime.sendMessage({
             action: "textMessageReceiving",
             senderName: message.sender,
-            messageString: message.messageString
-        },() => {console.log("Message was received here.")} )    
-    };
+            messageString: message.messageString,
+        }, () => { console.log("Message was received here."); });
+    }
 }
 
 function receivedTextMessage(message, remoteName) {
-    console.log(`${message} from ${remoteName}`)
+    console.log(`${message} from ${remoteName}`);
 
     chrome.runtime.sendMessage({
         action: "textMessageReceiving",
         senderName: remoteName,
-        messageString: message
-    },() => {console.log("Message was received here.")} )    
+        messageString: message,
+    }, () => { console.log("Message was received here."); });
 }
 
 function hangUp(callback) { // {{{
@@ -697,6 +698,7 @@ chrome.runtime.onMessage.addListener(function ({
         break;
     case "updateUsername":
         updateUsername();
+        break;
     default:
         console.debug(`Unknown action: ${action} requested!`);
     }
@@ -707,7 +709,7 @@ chrome.runtime.onMessage.addListener(function ({
 
 chrome.contextMenus.create({
     documentUrlPatterns: VideoController.documentURLMatchPatterns,
-    onclick: (info, tab) => {
+    onclick: (_info, _tab) => {
 
     },
     title: "Sync this video",

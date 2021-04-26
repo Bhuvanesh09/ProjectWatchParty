@@ -19,6 +19,7 @@ function initMessaging() {
         case "deniedController": {
             document.getElementById("request-controller-status").innerText = "Request denied!";
         }
+                break;
         default:
             console.log(`Unknown action: ${action}`);
         }
@@ -48,18 +49,18 @@ function initControls() {
 }
 
 function checkAlreadySet(currentName) {
-    console.log("current name =" + currentName);
-    if(currentName != null){
+    console.log(`current name =${currentName}`);
+    if (currentName != null) {
         document.getElementById("usernameInput").value = currentName;
     } else {
         usernameChanged(document.getElementById("usernameInput").value);
     }
-    document.getElementById("usernameInput").onchange = function() {
+    document.getElementById("usernameInput").onchange = function () {
         usernameChanged(document.getElementById("usernameInput").value);
     };
 }
 function initUsername() {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve, _reject) => {
         chrome.storage.local.get("username", (res) => {
             resolve(res.username);
         });
@@ -108,21 +109,21 @@ function updateProgress(pplData) {
     }
 }
 
-function usernameChanged(newUsername){
+function usernameChanged(newUsername) {
     chrome.storage.local.set({
-        username: newUsername
-    }); 
-    console.log("Local username changed to:" + newUsername);
-    chrome.runtime.sendMessage({
-        action: "updateUsername"
+        username: newUsername,
     });
-};
+    console.log(`Local username changed to:${newUsername}`);
+    chrome.runtime.sendMessage({
+        action: "updateUsername",
+    });
+}
 
-function openChatWindow(_clickEvent){
+function openChatWindow(_clickEvent) {
     chrome.windows.create({
-    url: chrome.runtime.getURL("../html/chat.html"),
-    type: "popup"
-  });
+        url: chrome.runtime.getURL("../html/chat.html"),
+        type: "popup",
+    });
 }
 
 function createRoom(_clickEvent) {
@@ -277,7 +278,7 @@ function init() {
     initDisplayController();
     initUsername()
         .then((currentName) => {
-            checkAlreadySet(currentName)
+            checkAlreadySet(currentName);
         });
 }
 

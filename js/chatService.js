@@ -1,40 +1,26 @@
-const chatService = function() {
+/* global $ */
 
-    $('#empty-chat').hide();
-    $('#group-message-holder').hide();
-    $('#loading-message-container').hide();
-    $('#send-message-spinner').hide();
+const chatService = (function () {
+    $("#empty-chat").hide();
+    $("#group-message-holder").hide();
+    $("#loading-message-container").hide();
+    $("#send-message-spinner").hide();
 
-
-    let messageArray = [
-        //{
-            //username: "oluyemi",
-            //message: "This is a new message"
-        //},
-        //{
-            //username: "Demo",
-            //message: "This is a new for demo"
-        //},
-        //{
-            //username: "sample",
-            //message: "Another reply from me"
-        //}
-    ];
-
+    const messageArray = [];
 
     if (messageArray.length < 1) {
-        $('#empty-chat').show();
-        $('#group-message-holder').hide();
+        $("#empty-chat").show();
+        $("#group-message-holder").hide();
     } else {
-        $('#group-message-holder').show();
+        $("#group-message-holder").show();
     }
-    
+
     return {
-        addMessage: function(messageData) {
+        addMessage(messageData) {
             messageArray.push(messageData);
         },
-        fetchMessages: function() {
-            $.each(messageArray, function(index, value) {
+        fetchMessages() {
+            $.each(messageArray, function (index, value) {
                 let messageList;
 
                 if (value.username !== "self") {
@@ -53,7 +39,7 @@ const chatService = function() {
                         </div>
                     </div>
                 </div>                    
-                    `
+                    `;
                 } else {
                     messageList = `
                     <div class="outgoing-chats old-chats">
@@ -64,35 +50,35 @@ const chatService = function() {
                             <img src="../assets/pp.png" alt="" class="avatar">
                         </div>
                     </div>
-`
+`;
                 }
 
-                $('#group-message-holder').append(messageList);
+                $("#group-message-holder").append(messageList);
             });
             this.scrollToBottom();
         },
-        sendMessage: function(message){
-            $('#send-message-spinner').show();
+        sendMessage(message) {
+            $("#send-message-spinner").show();
 
             chrome.runtime.sendMessage({
                 action: "textMessageSending",
                 messageString: message.message,
-            }, function (status) {
+            }, function (_status) {
                 if (chrome.runtime.lastError) {
                     console.log("ERROR", chrome.runtime.lastError);
                 } else {
-                    //statusElm.innerText = status;
-                    //Messaage send successfully
+                    // statusElm.innerText = status;
+                    // Messaage send successfully
                 }
             });
             messageArray.push(message);
         },
-        onMessageReceived: function() {
-            $('#empty-chat').hide();
-            $('#group-message-holder').show();
-            $('#send-message-spinner').hide();
+        onMessageReceived() {
+            $("#empty-chat").hide();
+            $("#group-message-holder").show();
+            $("#send-message-spinner").hide();
 
-            $.each(messageArray, function(index, value) {
+            $.each(messageArray, function (index, value) {
                 let messageList;
 
                 if (value.username !== "self") {
@@ -111,7 +97,7 @@ const chatService = function() {
                         </div>
                     </div>
                 </div>                    
-                    `
+                    `;
                 } else {
                     messageList = `
                     <div class="outgoing-chats ongoing old-chats">
@@ -122,16 +108,15 @@ const chatService = function() {
                             <img src="../assets/pp.png" alt="" class="avatar">
                         </div>
                     </div>
-`
+`;
                 }
-                $('#group-message-holder').append(messageList);
+                $("#group-message-holder").append(messageList);
             });
             this.scrollToBottom();
         },
         scrollToBottom() {
             const chat = document.getElementById("msg-page");
             chat.scrollTo(0, chat.scrollHeight + 30);
-        }
-    }
-}();
-
+        },
+    };
+}());

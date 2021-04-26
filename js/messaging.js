@@ -27,10 +27,9 @@ class Time {
 async function sendTextMessage(text) {
     sendData({
         action: "textMessage",
-        messageString: text
+        messageString: text,
     });
 }
-
 
 function escapeRegex(string) {
     return string.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
@@ -63,17 +62,18 @@ chrome.runtime.onMessage.addListener(function ({
             });
     }
         return true;
-    case "textMessageSending":
-        stringMessage = data.messageString; 
+    case "textMessageSending": {
+        const stringMessage = data.messageString;
         addToHistory("self", stringMessage);
         sendTextMessage(stringMessage)
             .then(() => {
                 sendResponse("success");
             });
+    }
         return true;
-        break;
     case "populateChatWindow":
         populateChatWindow();
+        break;
     default:
         console.log(`Action ${action} unknown!`);
     }
