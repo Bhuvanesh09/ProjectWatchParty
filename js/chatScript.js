@@ -49,3 +49,13 @@ window.addEventListener("load", function () {
         action: "populateChatWindow",
     });
 });
+
+hashStringToNum = s => s.split('').reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return ((a&a)%60)+1},0);
+
+findNumber = (str) => { return ("00" + hashStringToNum(str)).slice(-2);};
+
+
+changeMainDp = () => {document.getElementById("loggedInUserAvatar").src = `../assets/dp/${findNumber(myName)}-poke.svg`};
+
+setTimeout(changeMainDp, 5);
+
