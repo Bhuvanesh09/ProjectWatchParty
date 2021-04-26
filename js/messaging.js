@@ -24,6 +24,13 @@ class Time {
     }
 }
 
+async function sendTextMessage(text) {
+    sendData({
+        action: "textMessage",
+        messageString: text,
+    });
+}
+
 function escapeRegex(string) {
     return string.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
 }
@@ -55,6 +62,18 @@ chrome.runtime.onMessage.addListener(function ({
             });
     }
         return true;
+    case "textMessageSending": {
+        const stringMessage = data.messageString;
+        addToHistory("self", stringMessage);
+        sendTextMessage(stringMessage)
+            .then(() => {
+                sendResponse("success");
+            });
+    }
+        return true;
+    case "populateChatWindow":
+        populateChatWindow();
+        break;
     default:
         console.log(`Action ${action} unknown!`);
     }

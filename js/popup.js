@@ -19,6 +19,7 @@ function initMessaging() {
         case "deniedController": {
             document.getElementById("request-controller-status").innerText = "Request denied!";
         }
+                break;
         default:
             console.log(`Unknown action: ${action}`);
         }
@@ -42,6 +43,28 @@ function initControls() {
 
     const requestContBtn = document.getElementById("request-controller");
     requestContBtn.addEventListener("click", requestController);
+
+    const openChatBtn = document.getElementById("openChatWindow");
+    openChatBtn.addEventListener("click", openChatWindow);
+}
+
+function checkAlreadySet(currentName) {
+    console.log(`current name =${currentName}`);
+    if (currentName != null) {
+        document.getElementById("usernameInput").value = currentName;
+    } else {
+        usernameChanged(document.getElementById("usernameInput").value);
+    }
+    document.getElementById("usernameInput").onchange = function () {
+        usernameChanged(document.getElementById("usernameInput").value);
+    };
+}
+function initUsername() {
+    return new Promise((resolve, _reject) => {
+        chrome.storage.local.get("username", (res) => {
+            resolve(res.username);
+        });
+    });
 }
 
 function initSyncBar(pplData) {
@@ -84,6 +107,23 @@ function updateProgress(pplData) {
             document.getElementById(`${name}_barstep`).style.left = `${pplData[name]}%`;
         }
     }
+}
+
+function usernameChanged(newUsername) {
+    chrome.storage.local.set({
+        username: newUsername,
+    });
+    console.log(`Local username changed to:${newUsername}`);
+    chrome.runtime.sendMessage({
+        action: "updateUsername",
+    });
+}
+
+function openChatWindow(_clickEvent) {
+    chrome.windows.create({
+        url: chrome.runtime.getURL("../html/chat.html"),
+        type: "popup",
+    });
 }
 
 function createRoom(_clickEvent) {
@@ -236,6 +276,10 @@ function init() {
     initControls();
     initMessaging();
     initDisplayController();
+    initUsername()
+        .then((currentName) => {
+            checkAlreadySet(currentName);
+        });
 }
 
 (function checkInit() {

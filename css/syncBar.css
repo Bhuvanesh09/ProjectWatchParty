@@ -28,3 +28,12 @@ div#syncBar {
     margin-left: 0px;
 }
 
+#usernameInputDiv {
+    padding-left: 5vw;
+    font-size: 2rem;
+}
+
+#usernameInput {
+    border: none;
+}
+
