@@ -185,6 +185,16 @@ class AppState {
         return this.getMyName() === this.getCurrentControllerName();
     }
 
+    setVideo(url) {
+        this.roomData.videoURL = url;
+    }
+
+    shouldSendToPeers(url) {
+        const { videoURL } = this.roomData;
+        return this.isMyselfController() && new RegExp(escapeRegex(videoURL))
+            .test(url);
+    }
+
     // when sending to a newly joined peer
     prepareInitInfo() {
         return {
@@ -301,6 +311,7 @@ but not found in peer list`);
             roomId: null,
             peers: [],
             currentController: null,
+            videoURL: "",
         };
         this.personalData = {
             username: "",
@@ -348,6 +359,7 @@ but not found in peer list`);
             action: "startupInfo",
             state: this.state,
             roomId: this.getRoomId(),
+            url: this.roomData.videoURL,
         });
     }
 
@@ -361,6 +373,11 @@ but not found in peer list`);
         }
 
         callback(this.state);
+    }
+
+    roomJoined(roomId) {
+        this.setRoomId(roomId);
+        this.roomData.videoURL = "";
     }
 }
 
@@ -540,7 +557,7 @@ async function createRoom() { // {{{
     Controller.setController(appState.getMyName());
     advertiseOfferForPeers(selfRef);
 
-    appState.setRoomId(roomRef.id);
+    appState.roomJoined(roomRef.id);
     return roomRef.id;
 } // }}}
 
@@ -817,8 +834,9 @@ chrome.runtime.onMessage.addListener(function ({
 chrome.contextMenus.create({
     // eslint-disable-next-line no-undef
     documentUrlPatterns: VideoController.documentURLMatchPatterns,
-    onclick: (_info, _tab) => {
-
+    onclick: (_info, tab) => {
+        const { url } = tab;
+        appState.setVideo(url);
     },
     title: "Sync this video",
 });

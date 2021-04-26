@@ -33,8 +33,9 @@ function initMessaging() {
             const {
                 roomId,
                 state,
+                url,
             } = message;
-            console.debug("Received data", roomId, state);
+            console.debug("Received data", roomId, state, url);
             currState = state;
         }
             break;

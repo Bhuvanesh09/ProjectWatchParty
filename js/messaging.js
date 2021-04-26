@@ -9,26 +9,31 @@ class Time {
     static async receive(data) {
         chrome.tabs.query({}, function (tabs) {
             const message = {
-                action: "recvTime",
-                time: data.time,
-                paused: data.paused,
-            };
+                    action: "recvTime",
+                    time: data.time,
+                    paused: data.paused,
+                },
+                { url } = data;
+
+            // eslint-disable-next-line no-undef
+            appState.setVideo(url);
 
             let tabFound = false;
             for (const tab of tabs) {
                 const regex = new RegExp(escapeRegex(tab.url));
-                if (regex.test(data.url)) {
+                if (regex.test(url)) {
                     tabFound = true;
                     chrome.tabs.sendMessage(tab.id, message);
                 }
             }
 
             if (!tabFound) {
-                chrome.tabs.create({ url: data.url }, () => {
+                chrome.tabs.create({ url }, () => {
                     if (chrome.runtime.lastError) {
-                        console.error("Something went wrong while opening new tab", chrome.runtime.lastError);
+                        console.error("Something went wrong while opening new tab",
+                            chrome.runtime.lastError);
                     } else {
-                        console.log("Opened new tab because I don't have the tab required by controller open yet");
+                        console.log("Opened new tab: as tab sent by controller isn't open yet");
                     }
                 });
             }
@@ -58,15 +63,15 @@ chrome.runtime.onMessage.addListener(function ({
 
     switch (action) {
     case "sendTime": {
-        if (!appState.isMyselfController()) {
-            return false;
-        }
-
         const {
             url,
             paused,
             time,
         } = data;
+
+        if (!appState.shouldSendToPeers(url)) {
+            return false;
+        }
 
         Time.send({
             url,
