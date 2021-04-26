@@ -173,18 +173,20 @@ class AppState {
 
     currState;
 
-    roomId;
+    roomData;
 
-    currentControllerPeerObject;
+    personalData;
 
-    myName;
+    addPeer(newPeer) {
+        this.roomData.peers.push(newPeer);
+    }
 
     static meController() {
         console.debug("Setting myself the controller");
-        this.currentControllerPeerObject = new Peer(this.getMyName());
+        this.roomData.currentController = new Peer(this.getMyName());
 
         // broadcast my being the new controller to all my peers
-        for (const peer of this.peers) {
+        for (const peer of this.roomData.peers) {
             peer.sendNewController();
         }
     }
@@ -197,13 +199,13 @@ class AppState {
         } else {
             let found = false;
 
-            for (const peer of this.peers) {
+            for (const peer of this.roomData.peers) {
                 if (peer.peerName === newControllerName) {
                     found = true;
 
-                    this.currentControllerPeerObject = peer;
+                    this.roomData.currentController = peer;
                     if (notifyPeer) {
-                        this.currentControllerPeerObject.sendNewController();
+                        peer.sendNewController();
                     }
                     break;
                 }
@@ -220,8 +222,8 @@ but not found in peer list`);
     }
 
     getMyNameFromStorage() {
-        chrome.storage.local.get("username", (username) => {
-            this.myName = username.username;
+        chrome.storage.local.get("username", ({ username }) => {
+            this.setMyName(username);
         });
     }
 
@@ -230,63 +232,72 @@ but not found in peer list`);
     }
 
     setMyName(username) {
-        this.myName = username;
+        this.personalData.username = username;
     }
 
     getMyName() {
-        return this.myName;
+        return this.personalData.username;
     }
 
     getCurrentControllerName() {
-        return this.currentControllerPeerObject
-            ? this.currentControllerPeerObject.peerName : "No controller yet";
+        const cont = this.roomData.currentController;
+        return cont ? cont.peerName : "No controller yet";
     }
 
     requestController(callback) {
-        if (this.currentControllerPeerObject.peerName === this.getMyName()) {
+        if (this.getCurrentControllerName() === this.getMyName()) {
             callback("You are already a controller");
         } else {
-            const msg = { action: Controller.REQUEST_TYPE };
+            const msg = { action: Controller.REQUEST_TYPE },
+                cont = this.roomData.currentController;
 
-            console.debug(`Sending request ${msg} to controller:
-${this.currentControllerPeerObject.getDescription()}`);
+            console.debug(`Sending request ${msg} to controller: ${cont.getDescription()}`);
 
-            this.currentControllerPeerObject.send(msg);
+            cont.send(msg);
 
             callback("Request sent");
         }
     }
 
     getRoomId() {
-        return this.roomId;
+        return this.roomData.roomId;
     }
 
     static setRoomId(value) {
         chrome.storage.local.set({ ROOM_ID_KEY: value }, function () {
             if (chrome.runtime.lastError) {
                 console.log("Whoops! What went wrong?", chrome.runtime.lastError);
+            } else {
+                this.roomData.roomId = value;
             }
         });
     }
 
     constructor() {
         this.state = AppState.STATE.ALONE;
-        this.roomId = null;
-        this.peers = [];
-        this.currentControllerPeerObject = null;
+        this.roomData = {
+            roomId: null,
+            peers: [],
+            currentController: null,
+        };
+        this.personalData = {
+            username: "",
+            profilePicture: "",
+        };
+
         this.getMyNameFromStorage();
     }
 
     async hangUp(callback) {
-        for (const peerConnection of this.peers) {
+        for (const peerConnection of this.roomData.peers) {
             peerConnection.close();
         }
 
         // remove self from peers on hangup
-        if (this.roomId) {
+        if (this.getRoomId()) {
             const db = firebase.firestore(),
                 selfRef = db.collection("rooms")
-                    .doc(this.roomId)
+                    .doc(this.getRoomId())
                     .collection("peers")
                     .doc(this.getMyName()),
                 calleeCandidates = await selfRef.collection("calleeCandidates")
@@ -442,7 +453,7 @@ async function advertiseOfferForPeers(selfRef) { // {{{
                             console.debug("Collected all remote ice candidates");
                             const newPeer = new Peer(remotePeerName,
                                 peerConnection, dataChannel, Peer.SENDER_TYPE);
-                            appState.peers.push(newPeer);
+                            appState.addPeer(newPeer);
 
                             sendPrepData(newPeer);
 
@@ -602,7 +613,7 @@ async function joinRoomById(roomId) { // {{{
 async function sendData(object) {
     const packet = JSON.stringify(object);
 
-    for (const peer of appState.peers) {
+    for (const peer of appState.roomData.peers) {
         if (peer.isSendable()) {
             peer.sendStringified(packet);
         }
@@ -656,7 +667,7 @@ function recvData(peerConnection, remoteName) { // {{{
         const dataChannelRecv = event.channel,
             newPeer = new Peer(remoteName, peerConnection, dataChannelRecv, Peer.RECEIVER_TYPE);
 
-        appState.peers.push(newPeer);
+        appState.addPeer(newPeer);
         dataChannelRecv.addEventListener("message", receiveDataHandler(newPeer));
     });
 } // }}}
