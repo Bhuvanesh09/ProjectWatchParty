@@ -1,3 +1,11 @@
+const AppState = Object.freeze({
+    ALONE: 0,
+    UNFOLLOW: 1,
+    FOLLOW: 2,
+});
+
+let currState;
+
 function initMessaging() {
     chrome.runtime.onMessage.addListener(function ({
         action,
@@ -16,10 +24,21 @@ function initMessaging() {
             displayCurrentController(controllerName);
         }
             break;
-        case "deniedController": {
+        case "deniedController":
             document.getElementById("request-controller-status").innerText = "Request denied!";
+            break;
+            // TODO: use for profile picture, roomId, etc.
+        case "startupInfo": {
+            // @bhuvanesh
+            const {
+                roomId,
+                state,
+                url,
+            } = message;
+            console.debug("Received data", roomId, state, url);
+            currState = state;
         }
-                break;
+            break;
         default:
             console.log(`Unknown action: ${action}`);
         }
@@ -46,6 +65,15 @@ function initControls() {
 
     const openChatBtn = document.getElementById("openChatWindow");
     openChatBtn.addEventListener("click", openChatWindow);
+
+    const toggleFollow = document.getElementById("toggle-follow-btn");
+    toggleFollow.addEventListener("click", toggleFollowHandler);
+}
+
+function toggleFollowHandler(_clickEvent) {
+    chrome.runtime.sendMessage({ action: "toggleFollow" }, (response) => {
+        currState = response;
+    });
 }
 
 function checkAlreadySet(currentName) {
@@ -59,6 +87,7 @@ function checkAlreadySet(currentName) {
         usernameChanged(document.getElementById("usernameInput").value);
     };
 }
+
 function initUsername() {
     return new Promise((resolve, _reject) => {
         chrome.storage.local.get("username", (res) => {
