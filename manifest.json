@@ -16,6 +16,9 @@
         "js/sweetalert.min.js",
         "js/videoController.js",
         "js/content.js"
+      ],
+      "css": [
+        "css/videoStyle.css"
       ]
     }
   ],

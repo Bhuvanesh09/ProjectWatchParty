@@ -6,18 +6,33 @@ class Time {
         });
     }
 
-    static async receive(data) {
+    static async tellNoFollow(data) {
+        const message = {
+                action: "noFollow",
+            },
+            { url } = data;
+
         chrome.tabs.query({}, function (tabs) {
-            const message = {
-                    action: "recvTime",
-                    time: data.time,
-                    paused: data.paused,
-                },
-                { url } = data;
+            for (const tab of tabs) {
+                if (tab.url === url) {
+                    chrome.tabs.sendMessage(tab.id, message);
+                }
+            }
+        });
+    }
 
-            // eslint-disable-next-line no-undef
-            appState.setVideo(url);
+    static async receive(data) {
+        const message = {
+                action: "recvTime",
+                time: data.time,
+                paused: data.paused,
+            },
+            { url } = data;
 
+        // eslint-disable-next-line no-undef
+        appState.setVideo(url);
+
+        chrome.tabs.query({}, function (tabs) {
             let tabFound = false;
             for (const tab of tabs) {
                 if (tab.url === url) {

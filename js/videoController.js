@@ -1,6 +1,8 @@
 class VideoController {
     static NO_CHANGE_THRESH = 1;
 
+    static TRACK_CLASS = "tracking-watch-party";
+
     type;
 
     upperThreshold;
@@ -14,6 +16,14 @@ class VideoController {
         this.type = type;
         this.upperThreshold = 3;
         this.lowerThresh = 1;
+    }
+
+    noFollow() {
+        const elm = this.getElement();
+
+        if (elm) {
+            elm.classList.remove(VideoController.TRACK_CLASS);
+        }
     }
 
     getElement() {
@@ -66,6 +76,8 @@ class VideoController {
         if (!elm) {
             return;
         }
+
+        elm.classList.add(VideoController.TRACK_CLASS);
 
         // VERY BAD IDEA: don't do this, creates jarring effect
         // // pause the element before doing computations

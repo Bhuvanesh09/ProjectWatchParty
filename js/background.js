@@ -369,6 +369,11 @@ but not found in peer list`);
             } else if (this.state === AppState.STATE.UNFOLLOW) {
                 this.state = AppState.STATE.FOLLOW;
             }
+
+            if (this.state === AppState.STATE.UNFOLLOW) {
+                // eslint-disable-next-line no-undef
+                Time.tellNoFollow({ url: this.roomData.videoURL });
+            }
         }
 
         callback(this.state);

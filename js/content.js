@@ -30,6 +30,9 @@ chrome.runtime.onMessage.addListener(function ({
         swal("You're not the controller",
             "You need to be the controller of this party to sync videos", "error");
         break;
+    case "noFollow":
+        controller.noFollow();
+        break;
     default:
         console.log("Unknown message!");
     }
