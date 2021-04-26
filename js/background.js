@@ -165,8 +165,8 @@ class Controller {
 class AppState {
     static STATE = Object.freeze({
         ALONE: 0,
-        DETACH: 1,
-        JOIN: 2,
+        UNFOLLOW: 1,
+        FOLLOW: 2,
     });
 
     static ROOM_ID_KEY = "roomId";
@@ -177,6 +177,15 @@ class AppState {
 
     personalData;
 
+    shouldFollow() {
+        return this.currState === AppState.STATE.FOLLOW;
+    }
+
+    isMyselfController() {
+        return this.getMyName() === this.getCurrentControllerName();
+    }
+
+    // when sending to a newly joined peer
     prepareInitInfo() {
         return {
             action: "initInfo",
@@ -184,6 +193,7 @@ class AppState {
         };
     }
 
+    // when receiving from a peer after joining a new connection
     static receiveInitInfo(message) {
         const { controllerName } = message;
         Controller.setController(controllerName);
@@ -257,7 +267,7 @@ but not found in peer list`);
     }
 
     requestController(callback) {
-        if (this.getCurrentControllerName() === this.getMyName()) {
+        if (this.isMyselfController()) {
             callback("You are already a controller");
         } else {
             const msg = { action: Controller.REQUEST_TYPE },
@@ -275,14 +285,8 @@ but not found in peer list`);
         return this.roomData.roomId;
     }
 
-    static setRoomId(value) {
-        chrome.storage.local.set({ ROOM_ID_KEY: value }, function () {
-            if (chrome.runtime.lastError) {
-                console.log("Whoops! What went wrong?", chrome.runtime.lastError);
-            } else {
-                this.roomData.roomId = value;
-            }
-        });
+    setRoomId(value) {
+        this.roomData.roomId = value;
     }
 
     constructor() {
@@ -330,9 +334,27 @@ but not found in peer list`);
         callback(true);
     }
 
-    static sendStartupInfoPopup() {
+    sendStartupInfoPopup() {
         Controller.notifyOfCurrentController();
-        Controller.notifOfRequestList();
+        Controller.notifyOfRequestList();
+
+        chrome.runtime.sendMessage({
+            action: "startupInfo",
+            state: this.state,
+            roomId: this.getRoomId(),
+        });
+    }
+
+    followToggle(callback) {
+        if (!this.isMyselfController()) {
+            if (this.state === AppState.STATE.FOLLOW) {
+                this.state = AppState.STATE.UNFOLLOW;
+            } else if (this.state === AppState.STATE.UNFOLLOW) {
+                this.state = AppState.STATE.FOLLOW;
+            }
+        }
+
+        callback(this.state);
     }
 }
 
@@ -653,8 +675,10 @@ function receiveDataHandler(peerObject) {
             AppState.receiveInitInfo(message);
             break;
         case "synctime":
-            // eslint-disable-next-line no-undef
-            Time.receive(message);
+            if (appState.shouldFollow()) {
+                // eslint-disable-next-line no-undef
+                Time.receive(message);
+            }
             break;
         case Controller.REQUEST_TYPE:
             Controller.receivedRequest(peerObject);
@@ -769,6 +793,11 @@ chrome.runtime.onMessage.addListener(function ({
     case "updateUsername":
         // eslint-disable-next-line no-undef
         updateUsername();
+        break;
+    case "toggleFollow":
+        appState.followToggle((newValue) => {
+            sendResponse(newValue);
+        });
         break;
     default:
         console.debug(`Unknown action: ${action} requested!`);

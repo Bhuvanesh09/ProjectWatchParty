@@ -14,11 +14,23 @@ class Time {
                 paused: data.paused,
             };
 
+            let tabFound = false;
             for (const tab of tabs) {
                 const regex = new RegExp(escapeRegex(tab.url));
                 if (regex.test(data.url)) {
+                    tabFound = true;
                     chrome.tabs.sendMessage(tab.id, message);
                 }
+            }
+
+            if (!tabFound) {
+                chrome.tabs.create({ url: data.url }, () => {
+                    if (chrome.runtime.lastError) {
+                        console.error("Something went wrong while opening new tab", chrome.runtime.lastError);
+                    } else {
+                        console.log("Opened new tab because I don't have the tab required by controller open yet");
+                    }
+                });
             }
         });
     }

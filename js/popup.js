@@ -1,3 +1,11 @@
+const AppState = Object.freeze({
+    ALONE: 0,
+    UNFOLLOW: 1,
+    FOLLOW: 2,
+});
+
+let currState;
+
 function initMessaging() {
     chrome.runtime.onMessage.addListener(function ({
         action,
@@ -18,6 +26,15 @@ function initMessaging() {
             break;
         case "deniedController":
             document.getElementById("request-controller-status").innerText = "Request denied!";
+            break;
+            // TODO: use for profile picture, roomId, etc.
+        case "startupInfo":
+            // @bhuvanesh
+            const {
+                roomId,
+                status,
+            } = message;
+            console.debug("Received data", roomId, status);
             break;
         default:
             console.log(`Unknown action: ${action}`);
@@ -45,6 +62,15 @@ function initControls() {
 
     const openChatBtn = document.getElementById("openChatWindow");
     openChatBtn.addEventListener("click", openChatWindow);
+
+    const toggleFollow = document.getElementById("toggle-follow-btn");
+    toggleFollow.addEventListener("click", toggleFollowHandler);
+}
+
+function toggleFollowHandler(_clickEvent) {
+    chrome.runtime.sendMessage({ action: "toggleFollow" }, (response) => {
+        currState = response;
+    });
 }
 
 function checkAlreadySet(currentName) {
