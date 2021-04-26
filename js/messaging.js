@@ -58,6 +58,10 @@ chrome.runtime.onMessage.addListener(function ({
 
     switch (action) {
     case "sendTime": {
+        if (!appState.isMyselfController()) {
+            return false;
+        }
+
         const {
             url,
             paused,

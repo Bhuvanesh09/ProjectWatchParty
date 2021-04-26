@@ -171,14 +171,14 @@ class AppState {
 
     static ROOM_ID_KEY = "roomId";
 
-    currState;
+    state;
 
     roomData;
 
     personalData;
 
     shouldFollow() {
-        return this.currState === AppState.STATE.FOLLOW;
+        return this.state === AppState.STATE.FOLLOW;
     }
 
     isMyselfController() {
@@ -203,9 +203,15 @@ class AppState {
         this.roomData.peers.push(newPeer);
     }
 
-    static meController() {
+    // when joining room, creating room, etc.
+    startFollowing() {
+        this.state = AppState.STATE.FOLLOW;
+    }
+
+    meController() {
         console.debug("Setting myself the controller");
         this.roomData.currentController = new Peer(this.getMyName());
+        this.startFollowing();
 
         // broadcast my being the new controller to all my peers
         for (const peer of this.roomData.peers) {
@@ -534,7 +540,7 @@ async function createRoom() { // {{{
     Controller.setController(appState.getMyName());
     advertiseOfferForPeers(selfRef);
 
-    AppState.setRoomId(roomRef.id);
+    appState.setRoomId(roomRef.id);
     return roomRef.id;
 } // }}}
 
@@ -633,7 +639,8 @@ async function joinRoomById(roomId) { // {{{
     if (!roomSnapshot.exists) {
         return;
     }
-    AppState.setRoomId(roomId);
+    appState.setRoomId(roomId);
+    appState.startFollowing();
 
     peerSnapshot.forEach(async (peer) => {
         await processOffer(peer.ref);
@@ -778,7 +785,7 @@ chrome.runtime.onMessage.addListener(function ({
 
         return true;
     case "sendStartupInfo":
-        AppState.sendStartupInfoPopup();
+        appState.sendStartupInfoPopup();
 
         break;
     case "peerRequestDeniedAll":

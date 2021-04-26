@@ -28,13 +28,15 @@ function initMessaging() {
             document.getElementById("request-controller-status").innerText = "Request denied!";
             break;
             // TODO: use for profile picture, roomId, etc.
-        case "startupInfo":
+        case "startupInfo": {
             // @bhuvanesh
             const {
                 roomId,
-                status,
+                state,
             } = message;
-            console.debug("Received data", roomId, status);
+            console.debug("Received data", roomId, state);
+            currState = state;
+        }
             break;
         default:
             console.log(`Unknown action: ${action}`);
