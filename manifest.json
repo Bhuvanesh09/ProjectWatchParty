@@ -13,6 +13,7 @@
         "https://*.youtube.com/watch*"
       ],
       "js": [
+        "js/sweetalert.min.js",
         "js/videoController.js",
         "js/content.js"
       ]
@@ -39,5 +40,5 @@
     "128": "/images/get_started128.png"
   },
   "options_page": "html/options.html",
-  "content_security_policy": "script-src 'self' https://www.gstatic.com/ https://*.firebaseio.com https://www.googleapis.com; style-src 'self'; frame-src 'self'; connect-src 'self' wss://*.firebaseio.com https://*.googleapis.com; img-src 'self' https://www.google.com/images/*; default-src 'none';"
+  "content_security_policy": "script-src 'self' https://www.gstatic.com/ https://*.firebaseio.com https://www.googleapis.com; style-src 'self' 'unsafe-inline'; frame-src 'self'; connect-src 'self' wss://*.firebaseio.com https://*.googleapis.com; img-src 'self' https://www.google.com/images/*; default-src 'none';"
 }

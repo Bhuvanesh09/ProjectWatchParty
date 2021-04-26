@@ -835,7 +835,11 @@ chrome.contextMenus.create({
     documentUrlPatterns: VideoController.documentURLMatchPatterns,
     onclick: (_info, tab) => {
         const { url } = tab;
-        appState.setVideo(url);
+        if (appState.isMyselfController()) {
+            appState.setVideo(url);
+        } else {
+            chrome.tabs.sendMessage(tab.id, { action: "showError" });
+        }
     },
     title: "Sync this video",
 });
