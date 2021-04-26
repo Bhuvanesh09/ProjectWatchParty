@@ -20,8 +20,7 @@ class Time {
 
             let tabFound = false;
             for (const tab of tabs) {
-                const regex = new RegExp(escapeRegex(tab.url));
-                if (regex.test(url)) {
+                if (tab.url === url) {
                     tabFound = true;
                     chrome.tabs.sendMessage(tab.id, message);
                 }

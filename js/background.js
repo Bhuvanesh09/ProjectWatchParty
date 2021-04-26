@@ -191,8 +191,7 @@ class AppState {
 
     shouldSendToPeers(url) {
         const { videoURL } = this.roomData;
-        return this.isMyselfController() && new RegExp(escapeRegex(videoURL))
-            .test(url);
+        return this.isMyselfController() && videoURL === url;
     }
 
     // when sending to a newly joined peer
