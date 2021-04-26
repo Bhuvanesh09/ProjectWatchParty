@@ -369,6 +369,11 @@ but not found in peer list`);
             } else if (this.state === AppState.STATE.UNFOLLOW) {
                 this.state = AppState.STATE.FOLLOW;
             }
+
+            if (this.state === AppState.STATE.UNFOLLOW) {
+                // eslint-disable-next-line no-undef
+                Time.tellNoFollow({ url: this.roomData.videoURL });
+            }
         }
 
         callback(this.state);
@@ -542,7 +547,8 @@ function updateUsername() {
 async function createRoom() { // {{{
     const roomRef = firebase.firestore()
         .collection("rooms")
-        .doc();
+        // eslint-disable-next-line no-undef
+        .doc(generateUniqInviteLink());
     // firestore doesnt like empty documents.
     // fill dummy data to actually create the document
     // [firestore web ui will display the document name in italics if it doesn't actually exist]
@@ -835,7 +841,11 @@ chrome.contextMenus.create({
     documentUrlPatterns: VideoController.documentURLMatchPatterns,
     onclick: (_info, tab) => {
         const { url } = tab;
-        appState.setVideo(url);
+        if (appState.isMyselfController()) {
+            appState.setVideo(url);
+        } else {
+            chrome.tabs.sendMessage(tab.id, { action: "showError" });
+        }
     },
     title: "Sync this video",
 });

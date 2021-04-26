@@ -25,6 +25,14 @@ chrome.runtime.onMessage.addListener(function ({
         controller.goto(data.time, data.paused);
         sendResponse({ done: true });
         break;
+    case "showError":
+        // eslint-disable-next-line no-undef
+        swal("You're not the controller",
+            "You need to be the controller of this party to sync videos", "error");
+        break;
+    case "noFollow":
+        controller.noFollow();
+        break;
     default:
         console.log("Unknown message!");
     }
