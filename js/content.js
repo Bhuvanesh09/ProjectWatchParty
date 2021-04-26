@@ -26,6 +26,7 @@ chrome.runtime.onMessage.addListener(function ({
         sendResponse({ done: true });
         break;
     case "showError":
+        // eslint-disable-next-line no-undef
         swal("You're not the controller",
             "You need to be the controller of this party to sync videos", "error");
         break;

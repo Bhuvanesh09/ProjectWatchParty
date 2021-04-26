@@ -542,7 +542,8 @@ function updateUsername() {
 async function createRoom() { // {{{
     const roomRef = firebase.firestore()
         .collection("rooms")
-        .doc();
+        // eslint-disable-next-line no-undef
+        .doc(generateUniqInviteLink());
     // firestore doesnt like empty documents.
     // fill dummy data to actually create the document
     // [firestore web ui will display the document name in italics if it doesn't actually exist]
