@@ -16,10 +16,9 @@ function initMessaging() {
             displayCurrentController(controllerName);
         }
             break;
-        case "deniedController": {
+        case "deniedController":
             document.getElementById("request-controller-status").innerText = "Request denied!";
-        }
-                break;
+            break;
         default:
             console.log(`Unknown action: ${action}`);
         }
@@ -59,6 +58,7 @@ function checkAlreadySet(currentName) {
         usernameChanged(document.getElementById("usernameInput").value);
     };
 }
+
 function initUsername() {
     return new Promise((resolve, _reject) => {
         chrome.storage.local.get("username", (res) => {
