@@ -94,7 +94,7 @@ class Peer { // {{{
     }
 } // }}}
 
-class Controller {
+class Controller { // {{{
     static REQUEST_TYPE = "requestController";
 
     static GIVE_TYPE = "giveController";
@@ -160,7 +160,7 @@ class Controller {
     static async requestControllerAccess(callback) {
         appState.requestController(callback);
     }
-}
+} // }}}
 
 class AppState {
     static STATE = Object.freeze({
@@ -576,6 +576,28 @@ function registerPeerConnectionListeners(peerConnection) { // {{{
 
     peerConnection.addEventListener("connectionstatechange", () => {
         console.debug(`Connection state change: ${peerConnection.connectionState}`);
+
+        const currentControllerName = appState.getCurrentControllerName(),
+            peersSortedByName = [...appState.roomData.peers].sort(
+                (peerA, peerB) => peerA.peerName.localeCompare(peerB.peerName),
+            );
+
+        for (const peer of appState.roomData.peers) {
+            if (peer.peerConnection.connectionState !== "connected") {
+                if (peer.peerName === currentControllerName) {
+                    if (peersSortedByName[0].peerName === currentControllerName) {
+                        peersSortedByName.shift();
+                    }
+
+                    const newControllerName = peersSortedByName[0].peerName;
+
+                    // now, peersSortedByName[0] should become the new peer
+                    if (appState.getMyName() === newControllerName) {
+                        appState.meController();
+                    }
+                }
+            }
+        }
     });
 
     peerConnection.addEventListener("signalingstatechange", () => {
@@ -780,7 +802,7 @@ chrome.runtime.onMessage.addListener(function ({
     }
 
     switch (action) {
-   default:
+    default:
         console.debug(`Unknown action: ${action} requested!`);
     }
 
