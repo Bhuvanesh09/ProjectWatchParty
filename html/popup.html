@@ -1,77 +1,91 @@
 <!DOCTYPE html>
 <html>
-
-<head>
-    <link rel="stylesheet" href="../css/button.css">
+  <head>
+    <link rel="stylesheet" href="../css/popup.css">
     <link rel="stylesheet" href="../css/syncBar.css">
     <link rel="stylesheet" href="../css/bootstrap.min.css" media="all">
 
     <script src="../js/jquery-3.6.0.min.js"></script>
     <script src="../js/bootstrap.min.js"></script>
     <script src="../js/popup.js"></script>
-</head>
+  </head>
 
-<body>
-    <div id="usernameInputDiv" class="container-fluid">
-        <div class="row ">
-            Hello
+  <body>
+    <div class="container">
+      <div id="usernameInputDiv">
+        <div class="row">
+          Hello,&nbsp;
+          <input id="usernameInput" value="User">
         </div>
-        <div class="row ">
-            <input id="usernameInput" value="User">
+      </div>
+
+      <div id="controlsDiv">
+        <div class="row m-2">
+          <button class="btn btn-primary" id="createRoom">Create Room</button>
+          <label id="createdRoomId"></label>
         </div>
+        <div class="text-center">Or,</div>
+        <div class="row m-2">
+          <div>
+            <label for="roomCode">Unique Room Code: </label>
+            <input id="roomCode" type="text"/>
+          </div>
+          <button id="joinRoom" class="btn btn-primary">Join Room</button>
+        </div>
+
+        <hr>
+
+        <div class="row m-2">
+          <button id="openChatWindow" class="btn btn-primary">Open Chat</button>
+        </div>
+
+        <hr>
+
+        <div class="row m-2">
+          <button id="toggle-follow-btn" class="col-5 btn btn-primary">Toggle Follow</button>
+          <div class="col-2"></div>
+          <button id="hangUp" class="col-5 btn btn-primary">Terminate Session</button>
+        </div>
+
+        <hr>
+
+        <button
+          class="controller-dropdown"
+          data-toggle="collapse"
+          data-target="#controllerInteractions"
+          aria-expanded="false" aria-controls="controllerInteractions">
+          Controller Status
+        </button> 
+
+        <div class="collapse" id="controllerInteractions">
+          <div class="row m-2">
+            <button id="request-controller" class="btn btn-primary">Request controller</button>
+          </div>
+
+          <div class="row m-2">
+            Request status: <label for="request-controller" id="request-controller-status"></label>
+          </div>
+
+          <div class="row m-2">
+            Current controller: <label for="request-controller" id="current-controller"></label>
+          </div>
+
+          <div class="row m-2">
+            Allow request from:
+
+            <ul id="peerRequestList"></ul>
+
+            <button id="denyAllRequests" class="btn btn-danger">Deny all</button>
+          </div>
+        </div>
+
+      </div>
     </div>
-    <div id="controlsDiv" class="container-fluid">
-        <div class="row m-2">
-            <button class="btn btn-primary" id="createRoom">Create Room</button>
-            <label id="createdRoomId"></label>
-        </div>
-        <div class="row m-2">
-            <button id="joinRoom" class="btn btn-primary">Join Room</button>
-            <div>
-                <label for="roomCode">Code: </label>
-                <input id="roomCode" type="text"/>
-            </div>
-        </div>
-        <div class="row m-2">
-            <button id="hangUp" class="btn btn-primary">Terminate Session</button>
-        </div>
 
-    <hr>
-
-        <div class="row m-2">
-            <div class="row m-2">
-                <button id="toggle-follow-btn" class="btn btn-primary">Toggle Follow</button>
-            </div>
-
-            <div class="row m-2">
-                <button id="request-controller" class="btn btn-primary">Request controller</button>
-            </div>
-
-            <div class="row m-2">
-                Request status: <label for="request-controller" id="request-controller-status"></label>
-            </div>
-
-            <div class="row m-2">
-                Current controller: <label for="request-controller" id="current-controller"></label>
-            </div>
-
-            <div class="row m-2">
-                Allow request from:
-
-                <ul id="peerRequestList"></ul>
-
-                <button id="denyAllRequests" class="btn btn-danger">Deny all</button>
-            </div>
-            <div class="row m-2">
-                <button id="openChatWindow" class="btn btn-primary">Open Chat</button>
-            </div>
-        </div>
-    </div>
     <hr>
 
     <div id="syncBar">
     </div>
 
-</body>
-
+  </body>
 </html>

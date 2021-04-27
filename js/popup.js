@@ -213,7 +213,7 @@ function exitRoom(_clickEvent) {
     const statusElm = document.getElementById("createdRoomId");
     statusElm.innerText = "Exiting room...";
 
-    // TODO: give error if not joined any roomt yet
+    // TODO: give error if not joined any room yet
 
     chrome.runtime.sendMessage({
         action: "hangup",

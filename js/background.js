@@ -94,7 +94,7 @@ class Peer { // {{{
     }
 } // }}}
 
-class Controller {
+class Controller { // {{{
     static REQUEST_TYPE = "requestController";
 
     static GIVE_TYPE = "giveController";
@@ -103,23 +103,12 @@ class Controller {
 
     static requests = [];
 
-    static notifyOfCurrentController() {
-        chrome.runtime.sendMessage({
-            action: "controllerName",
-            controllerName: appState.getCurrentControllerName(),
-        });
-    }
-
     static setController(newControllerName, notifyPeer = false) {
         if (!newControllerName) {
             return;
         }
 
-        const success = appState.setNewController(newControllerName, notifyPeer);
-
-        if (success) {
-            this.notifyOfCurrentController();
-        }
+        appState.setNewController(newControllerName, notifyPeer);
     }
 
     static addNewRequest(peerObject) {
@@ -160,7 +149,7 @@ class Controller {
     static async requestControllerAccess(callback) {
         appState.requestController(callback);
     }
-}
+} // }}}
 
 class AppState {
     static STATE = Object.freeze({
@@ -228,6 +217,13 @@ class AppState {
         }
     }
 
+    notifyOfCurrentController() {
+        chrome.runtime.sendMessage({
+            action: "controllerName",
+            controllerName: this.getCurrentControllerName(),
+        });
+    }
+
     setNewController(newControllerName, notifyPeer = false) {
         console.debug(`AppState: setting new controller to ${newControllerName}`);
 
@@ -251,11 +247,11 @@ class AppState {
             if (!found) {
                 console.error(`Controller: Received name ${newControllerName}
 but not found in peer list`);
-                return false;
+                return;
             }
         }
 
-        return true;
+        this.notifyOfCurrentController();
     }
 
     getMyNameFromStorage() {
@@ -351,7 +347,7 @@ but not found in peer list`);
     }
 
     sendStartupInfoPopup() {
-        Controller.notifyOfCurrentController();
+        appState.notifyOfCurrentController();
         Controller.notifyOfRequestList();
 
         chrome.runtime.sendMessage({
@@ -409,6 +405,7 @@ function iceCandidateCollector(peerConnection, candidateCollection) {
         };
         candidateCollection.add(payload);
     });
+    // }}}
 }
 
 async function advertiseOfferForPeers(selfRef) { // {{{
@@ -574,6 +571,48 @@ function registerPeerConnectionListeners(peerConnection) { // {{{
 
     peerConnection.addEventListener("connectionstatechange", () => {
         console.debug(`Connection state change: ${peerConnection.connectionState}`);
+
+        function isPeerDisconnected(peer) {
+            return peer.peerConnection.connectionState !== "connected";
+        }
+
+        const currentControllerName = appState.getCurrentControllerName(),
+            peersSortedByName = appState.roomData.peers.map((peer) => peer.peerName)
+                // There were only two users in the meeting and the
+                // controller (the other peer) has left
+                .concat(appState.getMyName())
+                .sort(
+                    (peerNameA, peerNameB) => peerNameA.localeCompare(peerNameB),
+                );
+
+        let wasControllerDisconnected = false;
+
+        appState.roomData.peers = appState.roomData.peers.filter(
+            (peer) => {
+                if (!isPeerDisconnected(peer)) {
+                    return true;
+                }
+
+                if (peer.peerName === currentControllerName) {
+                    wasControllerDisconnected = true;
+                }
+
+                return false;
+            },
+        );
+
+        if (wasControllerDisconnected) {
+            if (peersSortedByName[0] === currentControllerName) {
+                peersSortedByName.shift();
+            }
+
+            const newControllerName = peersSortedByName[0];
+
+            // now, peersSortedByName[0] should become the new peer
+            if (appState.getMyName() === newControllerName) {
+                appState.setNewController(appState.getMyName());
+            }
+        }
     });
 
     peerConnection.addEventListener("signalingstatechange", () => {
@@ -682,7 +721,7 @@ async function sendData(object) {
             peer.sendStringified(packet);
         }
     }
-}
+} // }}}
 
 function receiveDataHandler(peerObject) {
     const remoteName = peerObject.peerName,
@@ -816,73 +855,6 @@ function receivedTextMessage(message, remoteName) {
         console.log("Message was received here.");
     });
 }
-
-// message listeners {{{
-chrome.runtime.onMessage.addListener(function ({
-    action,
-    ...others
-}, _sender, sendResponse) {
-    if (!firebaseAppInited) {
-        initFirebaseApp();
-    }
-
-    switch (action) {
-    case "createRoom":
-        createRoom()
-            .then((roomId) => {
-                sendResponse(roomId);
-            });
-        return true;
-    case "joinRoom":
-        joinRoomById(others.roomId)
-            .then(() => {
-                sendResponse("success");
-            });
-        return true;
-    case "hangup":
-        AppState.hangUp((status) => {
-            if (status) {
-                sendResponse("Exited!");
-            } else {
-                sendResponse("Errored!");
-            }
-        });
-        return true;
-    case "requestController":
-        Controller.requestControllerAccess((status) => {
-            sendResponse(status);
-        });
-
-        return true;
-    case "sendStartupInfo":
-        appState.sendStartupInfoPopup();
-
-        break;
-    case "peerRequestDeniedAll":
-        Controller.clearRequestList();
-        break;
-    case "peerRequestAcceptedOne": {
-        const { peerName } = others;
-        Controller.setController(peerName, true);
-        Controller.clearRequestList();
-    }
-        break;
-    case "updateUsername":
-        // eslint-disable-next-line no-undef
-        updateUsername();
-        break;
-    case "toggleFollow":
-        appState.followToggle((newValue) => {
-            sendResponse(newValue);
-        });
-        break;
-    default:
-        console.debug(`Unknown action: ${action} requested!`);
-    }
-
-    return false;
-});
-// }}}
 
 chrome.contextMenus.create({
     // eslint-disable-next-line no-undef

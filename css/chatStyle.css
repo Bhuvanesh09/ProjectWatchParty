@@ -135,6 +135,11 @@ nav {
   width: 100%;
 }
 
+.chat .container {
+  /* full height - navbar height - padding */
+  min-height: calc(95vh - 50px - 40px);
+}
+
 .empty-chat-holder {
   width: 100%;
   height: 250px;
@@ -235,7 +240,7 @@ nav {
 }
 
 .msg-page {
-  height: 516px;
+  /* height: 516px; */
   overflow-y: auto;
   padding-bottom: 50px;
 }
@@ -433,6 +438,8 @@ nav {
 
 .chat-page {
   position: relative;
+  /* 100% - height of header */
+  height: calc(100% - 70px);
 }
 
 .logo {
