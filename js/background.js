@@ -692,17 +692,15 @@ function receiveDataHandler(peerObject) {
         MAX_ROUNDS = 5;
 
     let times,
-        peerDelay; // [i send you receive, you send i receive]
+        peerDelay; // assuming symmetrical data channel
 
     function roundTripTime() {
         if (times.length === MAX_ROUNDS) {
-            peerDelay = [0, 0];
-            for (const [a, b, c] of times) {
-                peerDelay[0] += b - a;
-                peerDelay[1] += c - b;
+            peerDelay = 0;
+            for (const [a, c] of times) {
+                peerDelay += c - a;
             }
-            peerDelay[0] /= MAX_ROUNDS;
-            peerDelay[1] /= MAX_ROUNDS;
+            peerDelay /= 2 * MAX_ROUNDS;
 
             console.debug("Final peer delay", peerDelay);
 
@@ -730,23 +728,19 @@ function receiveDataHandler(peerObject) {
         } = JSON.parse(eventMessage.data);
 
         switch (action) {
-        case RTT_RESULT: {
-            const [a, b] = message.peerDelay;
-            peerDelay = [b, a];
+        case RTT_RESULT:
+            peerDelay = message.peerDelay;
             console.debug("Final peer delay", peerDelay);
-        }
             break;
         case RTT_SEND:
             peerObject.send({
                 action: RTT_RECEIVE,
-                time: Date.now(),
             });
             break;
         case RTT_RECEIVE: {
             const last = times[times.length - 1];
-            last.push(Number.parseInt(message.time, 10));
             last.push(Date.now());
-            console.debug("Latest RTT calculation", last);
+            console.debug(`Latest RTT calculation (${times.length}): ${last}`);
         }
             roundTripTime();
             break;
@@ -760,7 +754,7 @@ function receiveDataHandler(peerObject) {
         case "synctime":
             if (appState.shouldFollow()) {
                 // eslint-disable-next-line no-undef
-                Time.receive(message, peerDelay[1]);
+                Time.receive(message, peerDelay);
             }
             break;
         case Controller.REQUEST_TYPE:
