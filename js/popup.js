@@ -36,12 +36,16 @@ function modifyDisplayOnState(){
     if(document.getElementById("usernameInput").value === currentControllerGlobal){
         $("#passControllerToOthers").removeClass("hide");
         $("#request-controller").addClass("hide");
+        $("#myRequestStatus").addClass("hide");
+        $("#toggle-follow-btn").addClass("hide");
         $("#request-controller-status").addClass("hide");
 
     }
     else {
         $("#passControllerToOthers").addClass("hide");
         $("#request-controller").removeClass("hide");
+        $("#toggle-follow-btn").removeClass("hide");
+        $("#myRequestStatus").removeClass("hide");
         $("#request-controller-status").removeClass("hide");
     }
 
@@ -265,7 +269,7 @@ function exitRoom(_clickEvent) {
     const statusElm = document.getElementById("createdRoomId");
     statusElm.innerText = "Exiting room...";
 
-    // TODO: give error if not joined any roomt yet
+    // TODO: give error if not joined any room yet
 
     chrome.runtime.sendMessage({
         action: "hangup",

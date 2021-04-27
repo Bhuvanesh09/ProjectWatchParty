@@ -94,6 +94,7 @@ class VideoController {
         }
 
         if (Math.abs(gap) < this.lowerThresh) {
+            this.speedup(1);
             return;
         }
 
