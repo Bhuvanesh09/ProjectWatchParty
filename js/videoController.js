@@ -11,7 +11,7 @@ class VideoController {
 
     static documentURLMatchPatterns = ["https://www.youtube.com/watch?v=*"];
 
-    // type : 'yt' for YouTube, 'msstream' for MS Stream, 'vimeo' for Vimeo
+    // type : 'yt' for YouTube, 'msstream' for MS Stream, 'vimeo' for Vimeo, 'dm' for DailyMotion, 'twitch' for twitch videos
     constructor(type) {
         this.type = type;
         this.upperThreshold = 3;
@@ -31,7 +31,7 @@ class VideoController {
             return document.querySelector(".html5-main-video");
         }
 
-        if (this.type === "msstream" || this.type === "vimeo") {
+        if (this.type === "msstream" || this.type === "vimeo" || this.type === "dm" || this.type === "twitch") {
             return document.querySelector("video");
         }
 
