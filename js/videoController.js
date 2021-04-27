@@ -9,7 +9,12 @@ class VideoController {
 
     lowerThresh;
 
-    static documentURLMatchPatterns = ["https://www.youtube.com/watch?v=*"];
+    static documentURLMatchPatterns = ["https://www.youtube.com/watch?v=*",
+        "https://vimeo.com/*",
+        "https://web.microsoftstream.com/video/*",
+        "https://www.dailymotion.com/video/*",
+        "https://www.twitch.tv/videos/*",
+        "https://music.youtube.com/watch*"];
 
     // type : 'yt' for YouTube, 'msstream' for MS Stream, 'vimeo' for Vimeo, 'dm' for DailyMotion, 'twitch' for twitch videos
     constructor(type) {
@@ -27,13 +32,13 @@ class VideoController {
     }
 
     getElement() {
-        if (this.type === "yt") {
-            return document.querySelector(".html5-main-video");
-        }
+        // if (this.type === "yt") {
+        //     return document.querySelector(".html5-main-video");
+        // }
 
-        if (this.type === "msstream" || this.type === "vimeo" || this.type === "dm" || this.type === "twitch") {
-            return document.querySelector("video");
-        }
+        // if (this.type === "msstream" || this.type === "vimeo" || this.type === "dm" || this.type === "twitch") {
+        return document.querySelector("video");
+        // }
 
         return null;
     }
