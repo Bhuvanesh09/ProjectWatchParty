@@ -444,7 +444,6 @@ async function advertiseOfferForPeers(selfRef) { // {{{
     const dataChannel = peerConnection.createDataChannel("TimestampDataChannel");
 
     dataChannel.addEventListener("open", (_event) => {
-        console.log(_event, "Datachannel opened");
         sendPrepData(undefined, dataChannel);
     });
 
@@ -686,7 +685,39 @@ async function sendData(object) {
 }
 
 function receiveDataHandler(peerObject) {
-    const remoteName = peerObject.peerName;
+    const remoteName = peerObject.peerName,
+        RTT_SEND = "rttSend",
+        RTT_RESULT = "rttResult",
+        RTT_RECEIVE = "rttReceive",
+        MAX_ROUNDS = 5;
+
+    let times,
+        peerDelay; // assuming symmetrical data channel
+
+    function roundTripTime() {
+        if (times.length === MAX_ROUNDS) {
+            peerDelay = 0;
+            for (const [a, c] of times) {
+                peerDelay += c - a;
+            }
+            peerDelay /= 2 * MAX_ROUNDS;
+
+            console.debug("Final peer delay", peerDelay);
+
+            peerObject.send({
+                action: RTT_RESULT,
+                peerDelay,
+            });
+        } else {
+            times.push([Date.now()]);
+            peerObject.send({ action: RTT_SEND });
+        }
+    }
+
+    function startCalculatingRTT() {
+        times = []; // each element is 3-elm: [time sent, time he received, time I received back]
+        roundTripTime();
+    }
 
     return (eventMessage) => {
         console.log(`rtc> Received Message: ${eventMessage.data} from ${remoteName}`);
@@ -697,8 +728,25 @@ function receiveDataHandler(peerObject) {
         } = JSON.parse(eventMessage.data);
 
         switch (action) {
-        case "initInfo":
+        case RTT_RESULT:
+            peerDelay = message.peerDelay;
+            console.debug("Final peer delay", peerDelay);
+            break;
+        case RTT_SEND:
+            peerObject.send({
+                action: RTT_RECEIVE,
+            });
+            break;
+        case RTT_RECEIVE: {
+            const last = times[times.length - 1];
+            last.push(Date.now());
+            console.debug(`Latest RTT calculation (${times.length}): ${last}`);
+        }
+            roundTripTime();
+            break;
             // TODO: profile picture and names go here
+        case "initInfo":
+            startCalculatingRTT();
             // eslint-disable-next-line no-fallthrough
         case Controller.GIVE_TYPE:
             AppState.receiveInitInfo(message);
@@ -706,7 +754,7 @@ function receiveDataHandler(peerObject) {
         case "synctime":
             if (appState.shouldFollow()) {
                 // eslint-disable-next-line no-undef
-                Time.receive(message);
+                Time.receive(message, peerDelay);
             }
             break;
         case Controller.REQUEST_TYPE:
