@@ -150,7 +150,7 @@ class Controller { // {{{
     }
 } // }}}
 
-class AppState {
+class AppState { // {{{
     static STATE = Object.freeze({
         ALONE: 0,
         UNFOLLOW: 1,
@@ -385,9 +385,23 @@ but not found in peer list`);
         this.setRoomId(roomId);
         this.roomData.videoURL = "";
     }
-}
+} // }}}
 
 appState = new AppState();
+
+function resetAppStateOnDisconnect() {
+    firebase.firestore().collection("connectivity").onSnapshot({
+        includeMetadataChanges: true,
+    }, (snapshot) => {
+        if (snapshot.metadata.fromCache) {
+            // definitely offline if this is true
+            // reset appState
+            appState = new AppState();
+        }
+    });
+}
+
+resetAppStateOnDisconnect();
 
 function iceCandidateCollector(peerConnection, candidateCollection) {
     let iceCandidateSendCount = 0;
