@@ -1,7 +1,5 @@
 div#syncBar {
-  /* height: 15vh; */
-  /* margin: 2vw; */
-  /* margin-top: 6vh; */
+  margin: 2vw;
   position: relative;
   align-items: center;
   text-align: center;
