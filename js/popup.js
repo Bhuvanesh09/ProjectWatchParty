@@ -4,6 +4,7 @@ const StateKinds = Object.freeze({
     FOLLOW: 2,
 });
 
+let ROOMID;
 let currState;
 let currentControllerGlobal;
 
@@ -16,8 +17,9 @@ function modifyDisplayOnState(){
         $("#syncBar").addClass("hide");
     }
     else {
+        document.getElementById("roomInfoValue").innerHTML = ROOMID
         $("#joinSession").addClass("hide"); 
-
+        document.getElementById("usernameInput").disabled = true;
         $("#hangUp").removeClass("hide"); 
         $("#controller-elements").removeClass("hide");
         $("#openChatWindow").removeClass("hide"); 
@@ -30,6 +32,19 @@ function modifyDisplayOnState(){
             $("#syncBar").removeClass("hide");
         }
     }
+
+    if(document.getElementById("usernameInput").value === currentControllerGlobal){
+        $("#passControllerToOthers").removeClass("hide");
+        $("#request-controller").addClass("hide");
+        $("#request-controller-status").addClass("hide");
+
+    }
+    else {
+        $("#passControllerToOthers").addClass("hide");
+        $("#request-controller").removeClass("hide");
+        $("#request-controller-status").removeClass("hide");
+    }
+
 }
 
 function initMessaging() {
@@ -62,6 +77,7 @@ function initMessaging() {
                 url,
             } = message;
             console.debug("Received data", roomId, state, url);
+            ROOMID = roomId
             currState = state;
             modifyDisplayOnState();
         }
@@ -71,7 +87,7 @@ function initMessaging() {
                time, 
                totalTime,
            } = message;
-
+            console.log(`changing time to ${time}, ${totalTime}`);
             updateProgressBar(time, totalTime);
                
         default:
@@ -136,7 +152,8 @@ function initSyncBar(time, totalTime) {
     // const bar = $("#syncBar");
     const bar = document.getElementById("syncBar");
 
-    let barStringHtml = "<div class=\"progress\" id=\"netProgress\">";
+    let barStringHtml = "<h6> Controller's Time </h6>";
+    barStringHtml += "<div class=\"progress\" id=\"netProgress\">";
 
     //for (const name in pplData) {
         //if (name === "master") {
@@ -261,11 +278,26 @@ function exitRoom(_clickEvent) {
         }
     });
 }
+function formatFromSeconds(time) {   
+    // Hours, minutes and seconds
+    var hrs = ~~(time / 3600);
+    var mins = ~~((time % 3600) / 60);
+    var secs = ~~time % 60;
 
+    // Output like "1:01" or "4:03:59" or "123:03:59"
+    var ret = "";
+    if (hrs > 0) {
+        ret += "" + hrs + ":" + (mins < 10 ? "0" : "");
+    }
+    ret += "" + mins + ":" + (secs < 10 ? "0" : "");
+    ret += "" + secs;
+    return ret;
+}
 function updateProgressBar(time, totalTime) {
-    const perc = parseFloat(time)/parseFloat(totalTime);
+    if(time == null) time = 0;
+    const perc = parseFloat(time)*100/parseFloat(totalTime);
     document.getElementById("bar").style.width = `${perc}%`;
-    document.getElementById("bar").innerText = `${time}%`;
+    document.getElementById("bar").innerText = `${formatFromSeconds(time.toFixed(0))}`;
 }
 // TODO: integrate progress bar with actual time values
 function testProgressBar() {
@@ -328,6 +360,7 @@ let displayRequestController,
 
     displayCurrentController = function (peerName) {
         controllerCurrent.innerText = peerName;
+        currentControllerGlobal = peerName;
     };
 
     initDisplayController = function () {

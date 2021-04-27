@@ -34,6 +34,13 @@
                 </div>
             </div>
         </div>
+
+        <div class="row m-2" id="roomInfo">
+                <h6> Current Room: </h6>
+                <br>
+                <h5 id="roomInfoValue"> </h5>
+        </div>
+
         <div class="row m-2">
             <button id="hangUp" class="btn btn-primary">Terminate Session</button>
         </div>
@@ -57,7 +64,7 @@
                     Current controller: <label for="request-controller" id="current-controller"></label>
                 </div>
 
-                <div class="row m-2">
+                <div class="row m-2" id="passControllerToOthers">
                     Allow request from:
 
                     <ul id="peerRequestList"></ul>
@@ -73,6 +80,7 @@
     <hr>
 
     <div id="syncBar">
+
     </div>
 
 </body>
