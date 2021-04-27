@@ -578,8 +578,8 @@ function registerPeerConnectionListeners(peerConnection) { // {{{
         console.debug(`Connection state change: ${peerConnection.connectionState}`);
 
         const currentControllerName = appState.getCurrentControllerName(),
-            peersSortedByName = [...appState.roomData.peers].sort(
-                (peerA, peerB) => peerA.peerName.localeCompare(peerB.peerName),
+            peersSortedByName = appState.roomData.peers.map((peer) => peer.peerName).sort(
+                (peerNameA, peerNameB) => peerNameA.localeCompare(peerNameB),
             ),
             indicesOfDisconnectedPeers = [];
 
@@ -594,11 +594,17 @@ function registerPeerConnectionListeners(peerConnection) { // {{{
                         peersSortedByName.shift();
                     }
 
-                    const newControllerName = peersSortedByName[0].peerName;
-
-                    // now, peersSortedByName[0] should become the new peer
-                    if (appState.getMyName() === newControllerName) {
+                    if (peersSortedByName.length === 0) {
+                        // There were only two users in the meeting and the
+                        // controller (the other peer) has left
                         appState.meController();
+                    } else {
+                        const newControllerName = peersSortedByName[0].peerName;
+
+                        // now, peersSortedByName[0] should become the new peer
+                        if (appState.getMyName() === newControllerName) {
+                            appState.meController();
+                        }
                     }
                 }
             }
