@@ -580,10 +580,15 @@ function registerPeerConnectionListeners(peerConnection) { // {{{
         const currentControllerName = appState.getCurrentControllerName(),
             peersSortedByName = [...appState.roomData.peers].sort(
                 (peerA, peerB) => peerA.peerName.localeCompare(peerB.peerName),
-            );
+            ),
+            indicesOfDisconnectedPeers = [];
 
-        for (const peer of appState.roomData.peers) {
+        for (let i = 0; i < appState.roomData.peers.length; i++) {
+            const peer = appState.roomData.peers[i];
+
             if (peer.peerConnection.connectionState !== "connected") {
+                indicesOfDisconnectedPeers.push(i);
+
                 if (peer.peerName === currentControllerName) {
                     if (peersSortedByName[0].peerName === currentControllerName) {
                         peersSortedByName.shift();
@@ -598,6 +603,10 @@ function registerPeerConnectionListeners(peerConnection) { // {{{
                 }
             }
         }
+
+        appState.roomData.peers = appState.roomData.peers.filter(
+            (_, idx) => indicesOfDisconnectedPeers.indexOf(idx) === -1,
+        );
     });
 
     peerConnection.addEventListener("signalingstatechange", () => {
