@@ -109,7 +109,7 @@ chrome.runtime.onMessage.addListener(function ({
     case "populateChatWindow":
         populateChatWindow();
         break;
-   case "createRoom":
+    case "createRoom":
         createRoom()
             .then((roomId) => {
                 sendResponse(roomId);

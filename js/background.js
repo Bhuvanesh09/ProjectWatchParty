@@ -103,23 +103,12 @@ class Controller { // {{{
 
     static requests = [];
 
-    static notifyOfCurrentController() {
-        chrome.runtime.sendMessage({
-            action: "controllerName",
-            controllerName: appState.getCurrentControllerName(),
-        });
-    }
-
     static setController(newControllerName, notifyPeer = false) {
         if (!newControllerName) {
             return;
         }
 
-        const success = appState.setNewController(newControllerName, notifyPeer);
-
-        if (success) {
-            this.notifyOfCurrentController();
-        }
+        appState.setNewController(newControllerName, notifyPeer);
     }
 
     static addNewRequest(peerObject) {
@@ -228,6 +217,13 @@ class AppState {
         }
     }
 
+    notifyOfCurrentController() {
+        chrome.runtime.sendMessage({
+            action: "controllerName",
+            controllerName: this.getCurrentControllerName(),
+        });
+    }
+
     setNewController(newControllerName, notifyPeer = false) {
         console.debug(`AppState: setting new controller to ${newControllerName}`);
 
@@ -251,11 +247,11 @@ class AppState {
             if (!found) {
                 console.error(`Controller: Received name ${newControllerName}
 but not found in peer list`);
-                return false;
+                return;
             }
         }
 
-        return true;
+        this.notifyOfCurrentController();
     }
 
     getMyNameFromStorage() {
@@ -351,7 +347,7 @@ but not found in peer list`);
     }
 
     sendStartupInfoPopup() {
-        Controller.notifyOfCurrentController();
+        appState.notifyOfCurrentController();
         Controller.notifyOfRequestList();
 
         chrome.runtime.sendMessage({
@@ -577,33 +573,33 @@ function registerPeerConnectionListeners(peerConnection) { // {{{
     peerConnection.addEventListener("connectionstatechange", () => {
         console.debug(`Connection state change: ${peerConnection.connectionState}`);
 
+        function isPeerDisconnected(peer) {
+            return peer.peerConnection.connectionState !== "connected";
+        }
+
         const currentControllerName = appState.getCurrentControllerName(),
-            peersSortedByName = appState.roomData.peers.map((peer) => peer.peerName).sort(
-                (peerNameA, peerNameB) => peerNameA.localeCompare(peerNameB),
-            ),
-            indicesOfDisconnectedPeers = [];
+            peersSortedByName = appState.roomData.peers.map((peer) => peer.peerName)
+                .sort(
+                    (peerNameA, peerNameB) => peerNameA.localeCompare(peerNameB),
+                );
 
-        for (let i = 0; i < appState.roomData.peers.length; i++) {
-            const peer = appState.roomData.peers[i];
-
-            if (peer.peerConnection.connectionState !== "connected") {
-                indicesOfDisconnectedPeers.push(i);
-
+        for (const peer of appState.roomData.peers) {
+            if (isPeerDisconnected(peer)) {
                 if (peer.peerName === currentControllerName) {
-                    if (peersSortedByName[0].peerName === currentControllerName) {
+                    if (peersSortedByName[0] === currentControllerName) {
                         peersSortedByName.shift();
                     }
 
                     if (peersSortedByName.length === 0) {
                         // There were only two users in the meeting and the
                         // controller (the other peer) has left
-                        appState.meController();
+                        appState.setNewController(appState.getMyName());
                     } else {
-                        const newControllerName = peersSortedByName[0].peerName;
+                        const newControllerName = peersSortedByName[0];
 
                         // now, peersSortedByName[0] should become the new peer
                         if (appState.getMyName() === newControllerName) {
-                            appState.meController();
+                            appState.setNewController(appState.getMyName());
                         }
                     }
                 }
@@ -611,7 +607,7 @@ function registerPeerConnectionListeners(peerConnection) { // {{{
         }
 
         appState.roomData.peers = appState.roomData.peers.filter(
-            (_, idx) => indicesOfDisconnectedPeers.indexOf(idx) === -1,
+            (peer, _idx) => isPeerDisconnected(peer),
         );
     });
 
@@ -806,24 +802,6 @@ function receivedTextMessage(message, remoteName) {
         console.log("Message was received here.");
     });
 }
-
-// message listeners {{{
-chrome.runtime.onMessage.addListener(function ({
-    action,
-    ...others
-}, _sender, sendResponse) {
-    if (!firebaseAppInited) {
-        initFirebaseApp();
-    }
-
-    switch (action) {
-    default:
-        console.debug(`Unknown action: ${action} requested!`);
-    }
-
-    return false;
-});
-// }}}
 
 chrome.contextMenus.create({
     // eslint-disable-next-line no-undef
