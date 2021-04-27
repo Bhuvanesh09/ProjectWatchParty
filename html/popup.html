@@ -17,9 +17,9 @@
           Hello,&nbsp;
           <input id="usernameInput" value="User">
         </div>
-      </div>
-
-      <div id="controlsDiv">
+    </div>
+    <div id="controlsDiv" class="container-fluid">
+        <div id="joinSession">
         <div class="row m-2">
           <button class="btn btn-primary" id="createRoom">Create Room</button>
           <label id="createdRoomId"></label>
@@ -32,51 +32,48 @@
           </div>
           <button id="joinRoom" class="btn btn-primary">Join Room</button>
         </div>
-
-        <hr>
-
-        <div class="row m-2">
-          <button id="openChatWindow" class="btn btn-primary">Open Chat</button>
         </div>
 
+        <div class="row m-2" id="roomInfo">
+                <h6 class="text-center"> Current Room: </h6>
+                <hr>
+                <h5 id="roomInfoValue"> </h5>
+        </div>
         <hr>
+        <div class="row m-2">
+            <button id="hangUp" class="btn btn-primary">Terminate Session</button>
+        </div>
+        <hr>
+
 
         <div class="row m-2">
-          <button id="toggle-follow-btn" class="col-5 btn btn-primary">Toggle Follow</button>
-          <div class="col-2"></div>
-          <button id="hangUp" class="col-5 btn btn-primary">Terminate Session</button>
-        </div>
+            <div class="row m-2">
+                <button id="toggle-follow-btn" class="btn btn-primary">Toggle Follow</button>
+            </div>
+            <div id="controller-elements">
+                <div class="row m-2">
+                    <button id="request-controller" class="btn btn-primary">Request controller</button>
+                </div>
 
-        <hr>
+                <div class="row m-2" id="myRequestStatus">
+                    Request status: <label for="request-controller" id="request-controller-status"></label>
+                </div>
 
-        <button
-          class="controller-dropdown"
-          data-toggle="collapse"
-          data-target="#controllerInteractions"
-          aria-expanded="false" aria-controls="controllerInteractions">
-          Controller Status
-        </button> 
+                <div class="row m-2">
+                    Current controller: <label for="request-controller" id="current-controller"></label>
+                </div>
 
-        <div class="collapse" id="controllerInteractions">
-          <div class="row m-2">
-            <button id="request-controller" class="btn btn-primary">Request controller</button>
-          </div>
+                <div class="row m-2" id="passControllerToOthers">
+                    Allow request from:
 
-          <div class="row m-2">
-            Request status: <label for="request-controller" id="request-controller-status"></label>
-          </div>
+                    <ul id="peerRequestList"></ul>
 
-          <div class="row m-2">
-            Current controller: <label for="request-controller" id="current-controller"></label>
-          </div>
-
-          <div class="row m-2">
-            Allow request from:
-
-            <ul id="peerRequestList"></ul>
-
-            <button id="denyAllRequests" class="btn btn-danger">Deny all</button>
-          </div>
+                    <button id="denyAllRequests" class="btn btn-danger">Deny all</button>
+                </div>
+            </div>
+            <div class="row m-2">
+                <button id="openChatWindow" class="btn btn-primary">Open Chat</button>
+            </div>
         </div>
 
       </div>
@@ -85,6 +82,7 @@
     <hr>
 
     <div id="syncBar">
+
     </div>
 
   </body>

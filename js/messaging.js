@@ -81,6 +81,7 @@ chrome.runtime.onMessage.addListener(function ({
             url,
             paused,
             time,
+            totalTime,
         } = data;
 
         if (!appState.shouldSendToPeers(url)) {
@@ -91,6 +92,7 @@ chrome.runtime.onMessage.addListener(function ({
             url,
             paused,
             time,
+            totalTime,
         })
             .then(() => {
                 sendResponse("success");
@@ -135,8 +137,9 @@ chrome.runtime.onMessage.addListener(function ({
             sendResponse(status);
         });
         return true;
-    case "sendStartupInfo":
-        appState.sendStartupInfoPopup();
+    case "sendSessionInfo":
+        appState.sendSessionInfoPopup();
+
         break;
     case "peerRequestDeniedAll":
         Controller.clearRequestList();

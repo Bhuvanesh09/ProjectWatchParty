@@ -67,6 +67,11 @@ class VideoController {
         return elm ? elm.currentTime : -1;
     }
 
+    getTotalTime() {
+        const elm = this.getElement();
+        return elm ? elm.duration : -1;
+    }
+
     goto(targetTime, targetPaused) {
         const elm = this.getElement(),
             // give the target `time`
@@ -128,12 +133,14 @@ class VideoController {
         if (elm) {
             const url = this.getURL(),
                 time = this.getTime(),
-                paused = this.getPaused();
+                paused = this.getPaused(),
+                totalTime = this.getTotalTime();
 
             return {
                 url,
                 time,
                 paused,
+                totalTime,
             };
         }
 

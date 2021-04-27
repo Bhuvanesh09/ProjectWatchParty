@@ -7,7 +7,6 @@
 
 // firebase init {{{
 let firebaseAppInited = false;
-const messageHistory = [];
 
 function initFirebaseApp() {
     const firebaseConfig = {
@@ -300,6 +299,10 @@ but not found in peer list`);
         this.roomData.roomId = value;
     }
 
+    addMessage(msg) {
+        this.roomData.messageHistory.push(msg);
+    }
+
     constructor() {
         this.state = AppState.STATE.ALONE;
         this.roomData = {
@@ -307,6 +310,7 @@ but not found in peer list`);
             peers: [],
             currentController: null,
             videoURL: "",
+            messageHistory: [],
         };
         this.personalData = {
             username: "",
@@ -343,15 +347,17 @@ but not found in peer list`);
             await selfRef.delete();
         }
 
+        appState = new AppState();
+
         callback(true);
     }
 
-    sendStartupInfoPopup() {
+    sendSessionInfoPopup() {
         appState.notifyOfCurrentController();
         Controller.notifyOfRequestList();
 
         chrome.runtime.sendMessage({
-            action: "startupInfo",
+            action: "sessionInfo",
             state: this.state,
             roomId: this.getRoomId(),
             url: this.roomData.videoURL,
@@ -623,8 +629,6 @@ function registerPeerConnectionListeners(peerConnection) { // {{{
         console.debug(
             `ICE connection state change: ${peerConnection.iceConnectionState}`,
         );
-        // TODO: listen for disconnected here and drop controller accordingly
-        // https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/connectionState
     });
 } // }}}
 
@@ -791,6 +795,11 @@ function receiveDataHandler(peerObject) {
             AppState.receiveInitInfo(message);
             break;
         case "synctime":
+            chrome.runtime.sendMessage({
+                action: "backToPopCurrentTime",
+                time: message.time,
+                totalTime: message.totalTime,
+            });
             if (appState.shouldFollow()) {
                 // eslint-disable-next-line no-undef
                 Time.receive(message, peerDelay);
@@ -825,7 +834,7 @@ function recvData(peerConnection, remoteName) { // {{{
 } // }}}
 
 function addToHistory(sender, messageString) {
-    messageHistory.push({
+    appState.addMessage({
         sender,
         messageString,
     });
@@ -833,7 +842,7 @@ function addToHistory(sender, messageString) {
 
 // eslint-disable-next-line no-unused-vars
 function populateChatWindow() {
-    for (const message of messageHistory) {
+    for (const message of appState.roomData.messageHistory) {
         chrome.runtime.sendMessage({
             action: "textMessageReceiving",
             senderName: message.sender,
@@ -869,5 +878,9 @@ chrome.contextMenus.create({
     },
     title: "Sync this video",
 });
+
+// SENDING THE CURRENT STATE EACH SECOND
+
+setInterval(() => { appState.sendSessionInfoPopup(); }, 1000);
 
 // vim: fdm=marker ts=4 sts=4 sw=4

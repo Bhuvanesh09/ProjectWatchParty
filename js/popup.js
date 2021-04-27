@@ -1,10 +1,74 @@
-const AppState = Object.freeze({
+/* global $ */
+
+const StateKinds = Object.freeze({
     ALONE: 0,
     UNFOLLOW: 1,
     FOLLOW: 2,
 });
 
-let currState;
+let ROOMID,
+    currState,
+    currentControllerGlobal;
+
+function modifyDisplayOnState() {
+    if (currState === StateKinds.ALONE) {
+        $("#hangUp")
+            .addClass("hide");
+        $("#toggle-follow-btn")
+            .addClass("hide");
+        $("#controller-elements")
+            .addClass("hide");
+        $("#openChatWindow")
+            .addClass("hide");
+        $("#syncBar")
+            .addClass("hide");
+    } else {
+        document.getElementById("roomInfoValue").innerHTML = ROOMID;
+        $("#joinSession")
+            .addClass("hide");
+        document.getElementById("usernameInput").disabled = true;
+        $("#hangUp")
+            .removeClass("hide");
+        $("#controller-elements")
+            .removeClass("hide");
+        $("#openChatWindow")
+            .removeClass("hide");
+        $("#toggle-follow-btn")
+            .removeClass("hide");
+
+        if (currState === StateKinds.FOLLOW) {
+            $("#syncBar")
+                .addClass("hide");
+        } else {
+            $("#syncBar")
+                .removeClass("hide");
+        }
+    }
+
+    if (document.getElementById("usernameInput").value === currentControllerGlobal) {
+        $("#passControllerToOthers")
+            .removeClass("hide");
+        $("#request-controller")
+            .addClass("hide");
+        $("#myRequestStatus")
+            .addClass("hide");
+        $("#toggle-follow-btn")
+            .addClass("hide");
+        $("#request-controller-status")
+            .addClass("hide");
+    } else {
+        $("#passControllerToOthers")
+            .addClass("hide");
+        $("#request-controller")
+            .removeClass("hide");
+        $("#toggle-follow-btn")
+            .removeClass("hide");
+        $("#myRequestStatus")
+            .removeClass("hide");
+        $("#request-controller-status")
+            .removeClass("hide");
+    }
+}
 
 function initMessaging() {
     chrome.runtime.onMessage.addListener(function ({
@@ -28,7 +92,7 @@ function initMessaging() {
             document.getElementById("request-controller-status").innerText = "Request denied!";
             break;
             // TODO: use for profile picture, roomId, etc.
-        case "startupInfo": {
+        case "sessionInfo": {
             // @bhuvanesh
             const {
                 roomId,
@@ -36,7 +100,18 @@ function initMessaging() {
                 url,
             } = message;
             console.debug("Received data", roomId, state, url);
+            ROOMID = roomId;
             currState = state;
+            modifyDisplayOnState();
+        }
+            break;
+        case "backToPopCurrentTime": {
+            const {
+                time,
+                totalTime,
+            } = message;
+            console.log(`changing time to ${time}, ${totalTime}`);
+            updateProgressBar(time, totalTime);
         }
             break;
         default:
@@ -46,7 +121,7 @@ function initMessaging() {
         return false;
     });
 
-    chrome.runtime.sendMessage({ action: "sendStartupInfo" });
+    chrome.runtime.sendMessage({ action: "sendSessionInfo" });
 }
 
 function initControls() {
@@ -96,46 +171,18 @@ function initUsername() {
     });
 }
 
-function initSyncBar(pplData) {
-    // Init for the progress bar.
-    // const bar = $("#syncBar");
-    const bar = document.getElementById("syncBar");
-
-    let barStringHtml = "<div class=\"progress\" id=\"netProgress\">";
-
-    for (const name in pplData) {
-        if (name === "master") {
-            continue;
-        } else {
-            barStringHtml += `
-            <div class="bar-step" id="${name}_barstep">
-                <div class="label-line"></div>
-                <div class="label-txt">${name}</div>
-            </div>
-            `;
-        }
-    }
+function initSyncBar(time, totalTime) {
+    let barStringHtml = "<h6> Controller's Time </h6>";
+    barStringHtml += "<div class=\"progress\" id=\"netProgress\">";
 
     barStringHtml += `
-    <div class="progress-bar progress-bar-success" id="bar" >${pplData.master}%</div>
-    `; // Master's Done bar
+    <div class="progress-bar progress-bar-success" id="bar" >${0}%</div>
+`; // Master's Done bar
     barStringHtml += "</div>"; // Closing the progress div
 
     document.getElementById("syncBar").innerHTML = barStringHtml;
 
-    updateProgress(pplData);
-}
-
-function updateProgress(pplData) {
-    document.getElementById("bar").style.width = `${pplData.master}%`;
-    document.getElementById("bar").innerText = `${pplData.master}%`;
-    for (const name in pplData) {
-        if (name === "master") {
-            continue;
-        } else {
-            document.getElementById(`${name}_barstep`).style.left = `${pplData[name]}%`;
-        }
-    }
+    updateProgressBar(time, totalTime);
 }
 
 function usernameChanged(newUsername) {
@@ -227,26 +274,30 @@ function exitRoom(_clickEvent) {
     });
 }
 
-// TODO: integrate progress bar with actual time values
-function testProgressBar() {
-    const pplDat = {
-        master: 50,
-        A: 20,
-        B: 60,
-    };
+function formatFromSeconds(time) {
+    // Hours, minutes and seconds
+    const hrs = Math.floor(time / 3600),
+        mins = Math.floor((time % 3600) / 60),
+        secs = Math.floor(time % 60);
 
-    initSyncBar(pplDat);
+    // Output like "1:01" or "4:03:59" or "123:03:59"
+    let ret = "";
+    if (hrs > 0) {
+        ret += `${hrs}:${mins < 10 ? "0" : ""}`;
+    }
+    ret += `${mins}:${secs < 10 ? "0" : ""}`;
+    ret += `${secs}`;
+    return ret;
+}
 
-    const event = setInterval(function () {
-        pplDat.master += 2;
-        pplDat.A += 3;
-        pplDat.B += 1;
-        updateProgress(pplDat);
+function updateProgressBar(time, totalTime) {
+    if (time == null) {
+        time = 0;
+    }
 
-        if (pplDat.master >= 100) {
-            window.clearInterval(event);
-        }
-    }, 200);
+    const perc = (parseFloat(time) * 100) / parseFloat(totalTime);
+    document.getElementById("bar").style.width = `${perc}%`;
+    document.getElementById("bar").innerText = `${formatFromSeconds(time.toFixed(0))} / ${formatFromSeconds(totalTime.toFixed(0))}`;
 }
 
 let displayRequestController,
@@ -288,6 +339,7 @@ let displayRequestController,
 
     displayCurrentController = function (peerName) {
         controllerCurrent.innerText = peerName;
+        currentControllerGlobal = peerName;
     };
 
     initDisplayController = function () {
@@ -309,6 +361,7 @@ function init() {
         .then((currentName) => {
             checkAlreadySet(currentName);
         });
+    initSyncBar();
 }
 
 (function checkInit() {

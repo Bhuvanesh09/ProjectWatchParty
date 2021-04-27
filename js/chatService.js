@@ -1,5 +1,10 @@
 /* global $ */
 
+let myName;
+chrome.storage.local.get("username", (res) => {
+    myName = res.username;
+});
+
 const chatService = (function () {
     $("#empty-chat").hide();
     $("#group-message-holder").hide();
@@ -27,7 +32,7 @@ const chatService = (function () {
                     messageList = `
                     <div class="received-chats old-chats">
                     <div class="received-chats-img">
-                        <img src="../assets/pp.png" alt="Avatar" class="avatar">
+                        <img src="../assets/dp/${findNumber(value.username)}-poke.svg" alt="Avatar" class="avatar">
                     </div>
 
                     <div class="received-msg">
@@ -47,7 +52,7 @@ const chatService = (function () {
                             <p>${value.message}</p>
                         </div>
                         <div class="outgoing-chats-img">
-                            <img src="../assets/pp.png" alt="" class="avatar">
+                            <img src="../assets/dp/${findNumber(myName)}-poke.svg" alt="" class="avatar">
                         </div>
                     </div>
 `;
@@ -85,7 +90,7 @@ const chatService = (function () {
                     messageList = `
                     <div class="received-chats old-chats">
                     <div class="received-chats-img">
-                        <img src="../assets/pp.png" alt="Avatar" class="avatar">
+                        <img src="../assets/dp/${findNumber(value.username)}-poke.svg" alt="Avatar" class="avatar">
                     </div>
 
                     <div class="received-msg">
@@ -105,7 +110,7 @@ const chatService = (function () {
                             <p>${value.message}</p>
                         </div>
                         <div class="outgoing-chats-img">
-                            <img src="../assets/pp.png" alt="" class="avatar">
+                            <img src="../assets/dp/${findNumber(myName)}-poke.svg" alt="" class="avatar">
                         </div>
                     </div>
 `;
