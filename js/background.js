@@ -579,6 +579,9 @@ function registerPeerConnectionListeners(peerConnection) { // {{{
 
         const currentControllerName = appState.getCurrentControllerName(),
             peersSortedByName = appState.roomData.peers.map((peer) => peer.peerName)
+                // There were only two users in the meeting and the
+                // controller (the other peer) has left
+                .concat(appState.getMyName())
                 .sort(
                     (peerNameA, peerNameB) => peerNameA.localeCompare(peerNameB),
                 );
@@ -604,17 +607,11 @@ function registerPeerConnectionListeners(peerConnection) { // {{{
                 peersSortedByName.shift();
             }
 
-            if (peersSortedByName.length === 0) {
-                // There were only two users in the meeting and the
-                // controller (the other peer) has left
-                appState.setNewController(appState.getMyName());
-            } else {
-                const newControllerName = peersSortedByName[0];
+            const newControllerName = peersSortedByName[0];
 
-                // now, peersSortedByName[0] should become the new peer
-                if (appState.getMyName() === newControllerName) {
-                    appState.setNewController(appState.getMyName());
-                }
+            // now, peersSortedByName[0] should become the new peer
+            if (appState.getMyName() === newControllerName) {
+                appState.setNewController(appState.getMyName());
             }
         }
     });
