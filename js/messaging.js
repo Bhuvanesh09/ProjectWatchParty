@@ -109,8 +109,55 @@ chrome.runtime.onMessage.addListener(function ({
     case "populateChatWindow":
         populateChatWindow();
         break;
+   case "createRoom":
+        createRoom()
+            .then((roomId) => {
+                sendResponse(roomId);
+            });
+        return true;
+    case "joinRoom":
+        joinRoomById(data.roomId)
+            .then(() => {
+                sendResponse("success");
+            });
+        return true;
+    case "hangup":
+        appState.hangUp((status) => {
+            if (status) {
+                sendResponse("Exited!");
+            } else {
+                sendResponse("Errored!");
+            }
+        });
+        return true;
+    case "requestController":
+        Controller.requestControllerAccess((status) => {
+            sendResponse(status);
+        });
+        return true;
+    case "sendStartupInfo":
+        appState.sendStartupInfoPopup();
+        break;
+    case "peerRequestDeniedAll":
+        Controller.clearRequestList();
+        break;
+    case "peerRequestAcceptedOne": {
+        const { peerName } = data;
+        Controller.setController(peerName, true);
+        Controller.clearRequestList();
+    }
+        break;
+    case "updateUsername":
+        // eslint-disable-next-line no-undef
+        updateUsername();
+        break;
+    case "toggleFollow":
+        appState.followToggle((newValue) => {
+            sendResponse(newValue);
+        });
+        break;
     default:
-        console.log(`Action ${action} unknown!`);
+        console.debug(`Unknown action: ${action} requested!`);
     }
 
     return false;

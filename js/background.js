@@ -409,6 +409,7 @@ function iceCandidateCollector(peerConnection, candidateCollection) {
         };
         candidateCollection.add(payload);
     });
+    // }}}
 }
 
 async function advertiseOfferForPeers(selfRef) { // {{{
@@ -683,7 +684,7 @@ async function sendData(object) {
             peer.sendStringified(packet);
         }
     }
-}
+} // }}}
 
 function receiveDataHandler(peerObject) {
     const remoteName = peerObject.peerName;
@@ -779,56 +780,7 @@ chrome.runtime.onMessage.addListener(function ({
     }
 
     switch (action) {
-    case "createRoom":
-        createRoom()
-            .then((roomId) => {
-                sendResponse(roomId);
-            });
-        return true;
-    case "joinRoom":
-        joinRoomById(others.roomId)
-            .then(() => {
-                sendResponse("success");
-            });
-        return true;
-    case "hangup":
-        AppState.hangUp((status) => {
-            if (status) {
-                sendResponse("Exited!");
-            } else {
-                sendResponse("Errored!");
-            }
-        });
-        return true;
-    case "requestController":
-        Controller.requestControllerAccess((status) => {
-            sendResponse(status);
-        });
-
-        return true;
-    case "sendStartupInfo":
-        appState.sendStartupInfoPopup();
-
-        break;
-    case "peerRequestDeniedAll":
-        Controller.clearRequestList();
-        break;
-    case "peerRequestAcceptedOne": {
-        const { peerName } = others;
-        Controller.setController(peerName, true);
-        Controller.clearRequestList();
-    }
-        break;
-    case "updateUsername":
-        // eslint-disable-next-line no-undef
-        updateUsername();
-        break;
-    case "toggleFollow":
-        appState.followToggle((newValue) => {
-            sendResponse(newValue);
-        });
-        break;
-    default:
+   default:
         console.debug(`Unknown action: ${action} requested!`);
     }
 
