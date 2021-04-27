@@ -707,6 +707,11 @@ function receiveDataHandler(peerObject) {
             if (appState.shouldFollow()) {
                 // eslint-disable-next-line no-undef
                 Time.receive(message);
+                chrome.runtime.sendMessage({
+                    action: "backToPopCurrentTime",
+                    time: message.time,
+                    totalTime: message.totalTime,
+                });
             }
             break;
         case Controller.REQUEST_TYPE:

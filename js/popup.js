@@ -13,6 +13,7 @@ function modifyDisplayOnState(){
         $("#toggle-follow-btn").addClass("hide"); 
         $("#controller-elements").addClass("hide");
         $("#openChatWindow").addClass("hide"); 
+        $("#syncBar").addClass("hide");
     }
     else {
         $("#joinSession").addClass("hide"); 
@@ -65,6 +66,14 @@ function initMessaging() {
             modifyDisplayOnState();
         }
             break;
+        case "backToPopCurrentTime":
+           const {
+               time, 
+               totalTime,
+           } = message;
+
+            updateProgressBar(time, totalTime);
+               
         default:
             console.log(`Unknown action: ${action}`);
         }
@@ -122,34 +131,34 @@ function initUsername() {
     });
 }
 
-function initSyncBar(pplData) {
+function initSyncBar(time, totalTime) {
     // Init for the progress bar.
     // const bar = $("#syncBar");
     const bar = document.getElementById("syncBar");
 
     let barStringHtml = "<div class=\"progress\" id=\"netProgress\">";
 
-    for (const name in pplData) {
-        if (name === "master") {
-            continue;
-        } else {
-            barStringHtml += `
-            <div class="bar-step" id="${name}_barstep">
-                <div class="label-line"></div>
-                <div class="label-txt">${name}</div>
-            </div>
-            `;
-        }
-    }
+    //for (const name in pplData) {
+        //if (name === "master") {
+            //continue;
+        //} else {
+            //barStringHtml += `
+            //<div class="bar-step" id="${name}_barstep">
+                //<div class="label-line"></div>
+                //<div class="label-txt">${name}</div>
+            //</div>
+            //`;
+        //}
+    //}
 
     barStringHtml += `
-    <div class="progress-bar progress-bar-success" id="bar" >${pplData.master}%</div>
+    <div class="progress-bar progress-bar-success" id="bar" >${0}%</div>
     `; // Master's Done bar
     barStringHtml += "</div>"; // Closing the progress div
 
     document.getElementById("syncBar").innerHTML = barStringHtml;
 
-    updateProgress(pplData);
+    updateProgressBar(time, totalTime);
 }
 
 function updateProgress(pplData) {
@@ -253,6 +262,11 @@ function exitRoom(_clickEvent) {
     });
 }
 
+function updateProgressBar(time, totalTime) {
+    const perc = parseFloat(time)/parseFloat(totalTime);
+    document.getElementById("bar").style.width = `${perc}%`;
+    document.getElementById("bar").innerText = `${time}%`;
+}
 // TODO: integrate progress bar with actual time values
 function testProgressBar() {
     const pplDat = {
@@ -335,6 +349,7 @@ function init() {
         .then((currentName) => {
             checkAlreadySet(currentName);
         });
+    initSyncBar();
 }
 
 (function checkInit() {

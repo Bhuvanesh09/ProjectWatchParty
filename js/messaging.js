@@ -81,6 +81,7 @@ chrome.runtime.onMessage.addListener(function ({
             url,
             paused,
             time,
+            totalTime,
         } = data;
 
         if (!appState.shouldSendToPeers(url)) {
@@ -91,6 +92,7 @@ chrome.runtime.onMessage.addListener(function ({
             url,
             paused,
             time,
+            totalTime,
         })
             .then(() => {
                 sendResponse("success");
