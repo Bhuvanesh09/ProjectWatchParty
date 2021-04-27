@@ -1,0 +1,28 @@
+body {
+  width:750px;
+  height:550px;
+  overflow-x: hidden;
+}
+
+button {
+  width: 100%;
+}
+
+.controller-dropdown {
+  text-align: left;
+  font-size: 1.25rem;
+  border: none;
+  background-color: none;
+}
+
+/*
+button.current {
+box-shadow: 0 0 0 2px white,
+0 0 0 4px black;
+}
+
+div#controlsDiv {
+align-items: center;
+text-align: center;
+}
+ */
