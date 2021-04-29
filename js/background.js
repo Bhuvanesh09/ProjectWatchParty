@@ -29,6 +29,8 @@ function initFirebaseApp() {
     */
 
     firebaseAppInited = true;
+
+    resetAppStateOnDisconnect();
 }
 
 // }}}
@@ -173,6 +175,11 @@ class AppState { // {{{
         return this.getMyName() === this.getCurrentControllerName();
     }
 
+    /**
+     * Called on either user pressing context menu action
+     * or when peer receives message from controller
+     * @param url {String} url to sync on
+     */
     setVideo(url) {
         this.roomData.videoURL = url;
     }
@@ -390,18 +397,18 @@ but not found in peer list`);
 appState = new AppState();
 
 function resetAppStateOnDisconnect() {
-    firebase.firestore().collection("connectivity").onSnapshot({
-        includeMetadataChanges: true,
-    }, (snapshot) => {
-        if (snapshot.metadata.fromCache) {
-            // definitely offline if this is true
-            // reset appState
-            appState = new AppState();
-        }
-    });
+    firebase.firestore()
+        .collection("connectivity")
+        .onSnapshot({
+            includeMetadataChanges: true,
+        }, (snapshot) => {
+            if (snapshot.metadata.fromCache) {
+                // definitely offline if this is true
+                // reset appState
+                appState = new AppState();
+            }
+        });
 }
-
-resetAppStateOnDisconnect();
 
 function iceCandidateCollector(peerConnection, candidateCollection) {
     let iceCandidateSendCount = 0;
@@ -886,6 +893,7 @@ chrome.contextMenus.create({
         const { url } = tab;
         if (appState.isMyselfController()) {
             appState.setVideo(url);
+            chrome.tabs.sendMessage(tab.id, { action: "sendTimeData" });
         } else {
             chrome.tabs.sendMessage(tab.id, { action: "showError" });
         }
@@ -895,6 +903,24 @@ chrome.contextMenus.create({
 
 // SENDING THE CURRENT STATE EACH SECOND
 
-setInterval(() => { appState.sendSessionInfoPopup(); }, 1000);
+// chrome.alarms.create("updatePopup", {
+//     periodInMinutes: 1,
+//     when: Date.now(),
+// });
+//
+// chrome.alarms.onAlarm.addListener(function (alarm) {
+//     const { name } = alarm;
+//     switch (name) {
+//     case "updatePopup":
+//         appState.sendSessionInfoPopup();
+//         break;
+//     default:
+//         console.log(`Unknown alarm name: ${name}`);
+//     }
+// });
+
+setInterval(() => {
+    appState.sendSessionInfoPopup();
+}, 1000);
 
 // vim: fdm=marker ts=4 sts=4 sw=4

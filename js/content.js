@@ -1,8 +1,14 @@
 /* global VideoController */
 
-const controller = new VideoController("yt");
+let eventCount = 0,
+    lastEventCount = 0,
+    pendingRequest = false;
 
-setInterval(function () {
+const controller = new VideoController(function incrementCountOnEvent() {
+    eventCount++;
+});
+
+function sendTime() {
     const data = controller.getSendInfo();
 
     chrome.runtime.sendMessage({
@@ -13,7 +19,15 @@ setInterval(function () {
             console.log("This went wrong", chrome.runtime.lastError);
         }
     });
-}, 1000);
+}
+
+setInterval(function () {
+    if (pendingRequest || eventCount > lastEventCount) {
+        pendingRequest = false;
+        lastEventCount = eventCount;
+        sendTime();
+    }
+}, 200);
 
 chrome.runtime.onMessage.addListener(function ({
     action,
@@ -32,6 +46,9 @@ chrome.runtime.onMessage.addListener(function ({
         break;
     case "noFollow":
         controller.noFollow();
+        break;
+    case "sendTimeData":
+        pendingRequest = true;
         break;
     default:
         console.log("Unknown message!");

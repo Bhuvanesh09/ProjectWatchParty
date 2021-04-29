@@ -9,45 +9,66 @@ class VideoController {
 
     lowerThresh;
 
-    static documentURLMatchPatterns = ["https://www.youtube.com/watch?v=*"];
+    static documentURLMatchPatterns = ["https://www.youtube.com/watch?v=*",
+        "https://vimeo.com/*",
+        "https://web.microsoftstream.com/video/*",
+        "https://www.dailymotion.com/video/*",
+        "https://www.twitch.tv/videos/*"];
 
-    // type : 'yt' for YouTube, 'msstream' for MS Stream, 'vimeo' for Vimeo
-    constructor(type) {
-        this.type = type;
+    static matchers = {
+        yt: /\byoutube\.com/,
+        msstream: /web\.microsoftstream\.com/,
+        vimeo: /\bvimeo\.com/,
+        twitch: /\btwitch\.tv/,
+        dm: /\bdailymotion\.com/,
+    };
+
+    constructor(eventCallback) {
+        this.type = null;
+
+        for (const [key, reg] of Object.entries(VideoController.matchers)) {
+            if (reg.test(window.location.href)) {
+                this.type = key;
+                break;
+            }
+        }
+
+        if (!this.type) {
+            console.error("Controller used on a page with no elements that I can control.");
+            return;
+        }
+
+        this.setElement();
+
         this.upperThreshold = 3;
         this.lowerThresh = 1;
+
+        this.setHandlers(eventCallback);
+    }
+
+    setHandlers(eventCallback) {
+        const events = ["pause", "play", "seeked"];
+        for (const event of events) {
+            this.elm.addEventListener(event, (e) => {
+                eventCallback(e.type, this.getSendInfo());
+            });
+        }
     }
 
     noFollow() {
-        const elm = this.getElement();
-
-        if (elm) {
-            elm.classList.remove(VideoController.TRACK_CLASS);
-        }
+        this.elm.classList.remove(VideoController.TRACK_CLASS);
     }
 
-    getElement() {
-        if (this.type === "yt") {
-            return document.querySelector(".html5-main-video");
-        }
-
-        if (this.type === "msstream" || this.type === "vimeo") {
-            return document.querySelector("video");
-        }
-
-        return null;
+    setElement() {
+        this.elm = document.querySelector("video");
     }
 
     /**
      * @param time {Number} time in seconds
      */
     seek(time) {
-        const elm = this.getElement();
-
-        if (elm) {
-            elm.currentTime = time;
-            elm.playbackRate = 1.0; // reset playback rate
-        }
+        this.elm.currentTime = time;
+        this.elm.playbackRate = 1.0; // reset playback rate
     }
 
     speedup(speed) {
@@ -55,34 +76,24 @@ class VideoController {
         if (!speed) {
             speed = 1.0;
         }
-        const elm = this.getElement();
 
-        if (elm) {
-            elm.playbackRate = speed;
-        }
+        this.elm.playbackRate = speed;
     }
 
     getTime() {
-        const elm = this.getElement();
-        return elm ? elm.currentTime : -1;
+        return this.elm.currentTime;
     }
 
     getTotalTime() {
-        const elm = this.getElement();
-        return elm ? elm.duration : -1;
+        return this.elm.duration;
     }
 
     goto(targetTime, targetPaused) {
-        const elm = this.getElement(),
-            // give the target `time`
-            currentTime = this.getTime(),
+        // give the target `time`
+        const currentTime = this.getTime(),
             gap = targetTime - currentTime;
 
-        if (!elm) {
-            return;
-        }
-
-        elm.classList.add(VideoController.TRACK_CLASS);
+        this.elm.classList.add(VideoController.TRACK_CLASS);
 
         // VERY BAD IDEA: don't do this, creates jarring effect
         // // pause the element before doing computations
@@ -102,49 +113,35 @@ class VideoController {
         this.speedup(value);
 
         // resume the element once computation is over
-        if (targetPaused !== elm.paused) {
+        if (targetPaused !== this.elm.paused) {
             if (targetPaused) {
-                elm.pause();
+                this.elm.pause();
             } else {
-                elm.play();
+                this.elm.play();
             }
         }
     }
 
     getURL() {
-        const elm = this.getElement();
-        if (elm) {
-            return elm.ownerDocument.documentURI;
-        }
-        return null;
+        return this.elm.ownerDocument.documentURI;
     }
 
     getPaused() {
-        const elm = this.getElement();
-        if (elm) {
-            return elm.paused;
-        }
-        return null;
+        return this.elm.paused;
     }
 
     getSendInfo() {
-        const elm = this.getElement();
+        const url = this.getURL(),
+            time = this.getTime(),
+            paused = this.getPaused(),
+            totalTime = this.getTotalTime();
 
-        if (elm) {
-            const url = this.getURL(),
-                time = this.getTime(),
-                paused = this.getPaused(),
-                totalTime = this.getTotalTime();
-
-            return {
-                url,
-                time,
-                paused,
-                totalTime,
-            };
-        }
-
-        return null;
+        return {
+            url,
+            time,
+            paused,
+            totalTime,
+        };
     }
 }
 
