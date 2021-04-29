@@ -873,6 +873,13 @@ function populateChatWindow() {
 function receivedTextMessage(message, remoteName) {
     console.log(`${message} from ${remoteName}`);
 
+    chrome.notifications.create(appState.roomData.messageHistory.length.toString(), {
+        message,
+        title: `New Watch Party Message from ${remoteName}!`,
+        type: "basic",
+        iconUrl: "/images/get_started16.png",
+    });
+
     chrome.runtime.sendMessage({
         action: "textMessageReceiving",
         senderName: remoteName,
@@ -894,6 +901,13 @@ chrome.contextMenus.create({
         }
     },
     title: "Sync this video",
+});
+
+chrome.notifications.onClicked.addListener(() => {
+    chrome.windows.create({
+        url: chrome.runtime.getURL("../html/chat.html"),
+        type: "popup",
+    });
 });
 
 // SENDING THE CURRENT STATE EACH SECOND
