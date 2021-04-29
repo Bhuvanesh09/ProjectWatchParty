@@ -880,6 +880,14 @@ function receivedTextMessage(message, remoteName) {
         iconUrl: "/images/get_started16.png",
     });
 
+    chrome.browserAction.getBadgeText({}, function (text) {
+        if (text === "") {
+            chrome.browserAction.setBadgeText({ text: "1" });
+        } else {
+            chrome.browserAction.setBadgeText({ text: (1 + Number.parseInt(text, 10)).toString() });
+        }
+    });
+
     chrome.runtime.sendMessage({
         action: "textMessageReceiving",
         senderName: remoteName,
