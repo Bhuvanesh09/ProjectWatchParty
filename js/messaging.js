@@ -6,7 +6,7 @@ class Time {
         });
     }
 
-    static async tellNoFollow(data) {
+    static tellNoFollow(data) {
         const message = {
                 action: "noFollow",
             },

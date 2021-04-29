@@ -93,7 +93,6 @@ function initMessaging() {
             break;
             // TODO: use for profile picture, roomId, etc.
         case "sessionInfo": {
-            // @bhuvanesh
             const {
                 roomId,
                 state,
@@ -291,7 +290,11 @@ function formatFromSeconds(time) {
 }
 
 function updateProgressBar(time, totalTime) {
-    if (time == null) {
+    if (!time) {
+        time = 0;
+    }
+
+    if (!totalTime) {
         time = 0;
     }
 

@@ -29,6 +29,8 @@ function initFirebaseApp() {
     */
 
     firebaseAppInited = true;
+
+    resetAppStateOnDisconnect();
 }
 
 // }}}
@@ -390,18 +392,18 @@ but not found in peer list`);
 appState = new AppState();
 
 function resetAppStateOnDisconnect() {
-    firebase.firestore().collection("connectivity").onSnapshot({
-        includeMetadataChanges: true,
-    }, (snapshot) => {
-        if (snapshot.metadata.fromCache) {
-            // definitely offline if this is true
-            // reset appState
-            appState = new AppState();
-        }
-    });
+    firebase.firestore()
+        .collection("connectivity")
+        .onSnapshot({
+            includeMetadataChanges: true,
+        }, (snapshot) => {
+            if (snapshot.metadata.fromCache) {
+                // definitely offline if this is true
+                // reset appState
+                appState = new AppState();
+            }
+        });
 }
-
-resetAppStateOnDisconnect();
 
 function iceCandidateCollector(peerConnection, candidateCollection) {
     let iceCandidateSendCount = 0;
@@ -895,6 +897,8 @@ chrome.contextMenus.create({
 
 // SENDING THE CURRENT STATE EACH SECOND
 
-setInterval(() => { appState.sendSessionInfoPopup(); }, 1000);
+setInterval(() => {
+    appState.sendSessionInfoPopup();
+}, 1000);
 
 // vim: fdm=marker ts=4 sts=4 sw=4
