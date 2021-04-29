@@ -24,7 +24,7 @@ class Time {
     static async receive(data, delay) {
         const message = {
                 action: "recvTime",
-                time: data.time + delay / 1000,
+                time: data.time + (data.paused ? 0 : delay / 1000),
                 paused: data.paused,
             },
             { url } = data;

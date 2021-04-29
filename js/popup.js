@@ -295,7 +295,7 @@ function updateProgressBar(time, totalTime) {
     }
 
     if (!totalTime) {
-        time = 0;
+        totalTime = 0;
     }
 
     const perc = (parseFloat(time) * 100) / parseFloat(totalTime);

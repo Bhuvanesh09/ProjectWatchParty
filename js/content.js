@@ -2,7 +2,7 @@
 
 const controller = new VideoController("yt");
 
-setInterval(function () {
+function forceSynchronize() {
     const data = controller.getSendInfo();
 
     chrome.runtime.sendMessage({
@@ -13,7 +13,11 @@ setInterval(function () {
             console.log("This went wrong", chrome.runtime.lastError);
         }
     });
-}, 1000);
+}
+
+setInterval(forceSynchronize, 1000);
+
+controller.setHandlers(forceSynchronize);
 
 chrome.runtime.onMessage.addListener(function ({
     action,

@@ -1,4 +1,3 @@
-
 class VideoController {
     static NO_CHANGE_THRESH = 1;
 
@@ -43,15 +42,15 @@ class VideoController {
 
         this.upperThreshold = 3;
         this.lowerThresh = 1;
-
-        this.setHandlers(eventCallback);
     }
 
     setHandlers(eventCallback) {
         const events = ["pause", "play", "seeked"];
         for (const event of events) {
             this.elm.addEventListener(event, (e) => {
-                eventCallback(e.type, this.getSendInfo());
+                if (eventCallback) {
+                    eventCallback(e.type, this.getSendInfo());
+                }
             });
         }
     }
