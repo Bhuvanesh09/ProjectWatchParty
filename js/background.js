@@ -8,6 +8,7 @@
 // firebase init {{{
 let firebaseAppInited = false;
 
+// eslint-disable-next-line no-unused-vars
 function initFirebaseApp() {
     const firebaseConfig = {
         apiKey: "AIzaSyAymlhRxTn9Vpc5BYC7xrT7iOJ-wtbX5ec",
@@ -28,6 +29,7 @@ function initFirebaseApp() {
      firebase.analytics();
     */
 
+    // eslint-disable-next-line no-unused-vars
     firebaseAppInited = true;
 
     resetAppStateOnDisconnect();
@@ -184,6 +186,31 @@ class AppState { // {{{
         this.roomData.videoURL = url;
     }
 
+    /**
+     * Only called when I am a followed and not a controller
+     * @param data
+     * @param delay
+     */
+    updateVideoState(data, delay) {
+        const message = {
+                action: "recvTime",
+                time: data.time + delay / 1000,
+                paused: data.paused,
+                when: Date.now(),
+            },
+            { url } = data;
+
+        this.setVideo(url);
+        this.roomData.videoData = message;
+    }
+
+    periodicUpdateToContentScript() {
+        if (this.roomData && this.roomData.videoURL && this.roomData.videoData) {
+            // eslint-disable-next-line no-undef
+            Time.sendToTabs(this.roomData.videoData, this.roomData.videoURL);
+        }
+    }
+
     shouldSendToPeers(url) {
         const { videoURL } = this.roomData;
         return this.isMyselfController() && videoURL === url;
@@ -215,6 +242,7 @@ class AppState { // {{{
     meController() {
         console.debug("Setting myself the controller");
         this.roomData.currentController = new Peer(this.getMyName());
+        this.roomData.videoData = null; // reset this
         this.startFollowing();
 
         // broadcast my being the new controller to all my peers
@@ -567,6 +595,7 @@ function updateUsername() {
     appState.getMyNameFromStorage();
 }
 
+// eslint-disable-next-line no-unused-vars
 async function createRoom() { // {{{
     const roomRef = firebase.firestore()
         .collection("rooms")
@@ -711,6 +740,7 @@ async function processOffer(peerRef) { // {{{
     // }}}
 } // }}}
 
+// eslint-disable-next-line no-unused-vars
 async function joinRoomById(roomId) { // {{{
     console.log(`Joining room: '${roomId}'`);
     const db = await firebase.firestore(),
@@ -822,8 +852,7 @@ function receiveDataHandler(peerObject) {
                 totalTime: message.totalTime,
             });
             if (appState.shouldFollow()) {
-                // eslint-disable-next-line no-undef
-                Time.receive(message, peerDelay);
+                appState.updateVideoState(message, peerDelay);
             }
             break;
         case Controller.REQUEST_TYPE:
@@ -921,6 +950,10 @@ chrome.contextMenus.create({
 
 setInterval(() => {
     appState.sendSessionInfoPopup();
+}, 1000);
+
+setInterval(() => {
+    appState.periodicUpdateToContentScript();
 }, 1000);
 
 // vim: fdm=marker ts=4 sts=4 sw=4

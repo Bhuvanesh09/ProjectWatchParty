@@ -6,7 +6,7 @@ class Time {
         });
     }
 
-    static async tellNoFollow(data) {
+    static tellNoFollow(data) {
         const message = {
                 action: "noFollow",
             },
@@ -21,16 +21,10 @@ class Time {
         });
     }
 
-    static async receive(data, delay) {
-        const message = {
-                action: "recvTime",
-                time: data.time + delay / 1000,
-                paused: data.paused,
-            },
-            { url } = data;
-
-        // eslint-disable-next-line no-undef
-        appState.setVideo(url);
+    static sendToTabs(message, url) {
+        if (!message.paused) {
+            message.time += (Date.now() - message.when) / 1000;
+        }
 
         chrome.tabs.query({}, function (tabs) {
             let tabFound = false;
