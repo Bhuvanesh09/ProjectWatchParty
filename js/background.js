@@ -44,7 +44,8 @@ const ICEConfiguration = {
         },
     ],
 };
-let appState;
+let appState,
+    token;
 
 class Peer { // {{{
     static SENDER_TYPE = "sender";
@@ -101,8 +102,6 @@ class Controller { // {{{
     static GIVE_TYPE = "giveController";
 
     static DENY_TYPE = "denyController";
-
-    static requests = [];
 
     static setController(newControllerName, notifyPeer = false) {
         if (!newControllerName) {
@@ -189,13 +188,19 @@ class AppState { // {{{
         return {
             action: "initInfo",
             controllerName: this.getCurrentControllerName(),
+            totalNumsSoFar: this.roomData.totalNumsSoFar,
         };
     }
 
     // when receiving from a peer after joining a new connection
     static receiveInitInfo(message) {
-        const { controllerName } = message;
+        const {
+            controllerName,
+            totalNumsSoFar,
+        } = message;
         Controller.setController(controllerName);
+        this.roomData.totalNumsSoFar = totalNumsSoFar + 1; // +1 for myself
+        this.roomData.myJoinNumber = totalNumsSoFar + 1;
     }
 
     addPeer(newPeer) {
@@ -282,7 +287,12 @@ but not found in peer list`);
         if (this.isMyselfController()) {
             callback("You are already a controller");
         } else {
-            const msg = { action: Controller.REQUEST_TYPE },
+            const reqNumber = token.makeRequest(),
+
+                msg = {
+                    action: Controller.REQUEST_TYPE,
+                    reqNumber,
+                },
                 cont = this.roomData.currentController;
 
             console.debug(`Sending request ${msg} to controller: ${cont.getDescription()}`);
@@ -313,6 +323,9 @@ but not found in peer list`);
             currentController: null,
             videoURL: "",
             messageHistory: [],
+            requestNums: [],
+            totalNumsSoFar: 0,
+            myJoinNumber: 0,
         };
         this.personalData = {
             username: "",
@@ -389,7 +402,24 @@ but not found in peer list`);
     }
 } // }}}
 
+class TokenRelated {
+    requests;
+
+    constructor() {
+        for (let i = 0; i < 100; i++) {
+            this.requests.push(0);
+        }
+    }
+
+    makeRequest() {
+        const x = appState.roomData.myJoinNumber;
+        this.requests[x]++;
+        return this.requests[x];
+    }
+}
+
 appState = new AppState();
+token = new TokenRelated();
 
 function resetAppStateOnDisconnect() {
     firebase.firestore()
@@ -451,6 +481,7 @@ async function advertiseOfferForPeers(selfRef) { // {{{
             if (initCount === 2) {
                 dataChannel.addEventListener("message", receiveDataHandler(peerObject));
 
+                appState.roomData.totalNumsSoFar += 1;
                 peerObject.send(appState.prepareInitInfo());
             }
         };
@@ -578,6 +609,8 @@ async function createRoom() { // {{{
 
     // the creator of the room is its initial controller
     Controller.setController(appState.getMyName());
+    this.roomData.totalNumsSoFar = 1;
+    this.roomData.myJoinNumber = 1;
     advertiseOfferForPeers(selfRef);
 
     appState.roomJoined(roomRef.id);

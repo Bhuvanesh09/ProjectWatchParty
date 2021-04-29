@@ -17,7 +17,7 @@ function forceSynchronize() {
     });
 }
 
-// setInterval(forceSynchronize, 1200);
+setInterval(forceSynchronize, 1000);
 
 controller.setHandlers(forceSynchronize);
 
