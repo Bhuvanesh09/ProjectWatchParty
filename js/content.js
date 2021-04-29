@@ -5,6 +5,8 @@ const controller = new VideoController("yt");
 function forceSynchronize() {
     const data = controller.getSendInfo();
 
+    console.log(`Synchronizing with ${JSON.stringify(data)}`);
+
     chrome.runtime.sendMessage({
         action: "sendTime",
         ...data,
@@ -15,7 +17,7 @@ function forceSynchronize() {
     });
 }
 
-setInterval(forceSynchronize, 1000);
+// setInterval(forceSynchronize, 1200);
 
 controller.setHandlers(forceSynchronize);
 

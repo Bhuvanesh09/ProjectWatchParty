@@ -23,7 +23,7 @@ class VideoController {
         dm: /\bdailymotion\.com/,
     };
 
-    constructor(eventCallback) {
+    constructor() {
         this.type = null;
 
         for (const [key, reg] of Object.entries(VideoController.matchers)) {
@@ -40,8 +40,8 @@ class VideoController {
 
         this.setElement();
 
-        this.upperThreshold = 3;
-        this.lowerThresh = 1;
+        this.upperThreshold = 1; // keep at 1
+        this.lowerThresh = 0.2;
     }
 
     setHandlers(eventCallback) {
@@ -49,7 +49,7 @@ class VideoController {
         for (const event of events) {
             this.elm.addEventListener(event, (e) => {
                 if (eventCallback) {
-                    eventCallback(e.type, this.getSendInfo());
+                    eventCallback();
                 }
             });
         }
@@ -89,37 +89,45 @@ class VideoController {
     }
 
     goto(targetTime, targetPaused) {
-        // give the target `time`
-        const currentTime = this.getTime(),
+        const fixPausation = function () {
+            // resume the element once computation is over
+                if (targetPaused !== this.elm.paused) {
+                    if (targetPaused) {
+                        this.elm.pause();
+                    } else {
+                        this.elm.play();
+                    }
+                }
+            }.bind(this),
+
+            // give the target `time`
+            currentTime = this.getTime(),
             gap = targetTime - currentTime;
 
         this.elm.classList.add(VideoController.TRACK_CLASS);
 
-        // VERY BAD IDEA: don't do this, creates jarring effect
-        // // pause the element before doing computations
-        // elm.pause();
-
         if (Math.abs(gap) > this.upperThreshold) {
             this.seek(targetTime);
+            fixPausation();
             return;
         }
 
         if (Math.abs(gap) < this.lowerThresh) {
             this.speedup(1);
+            fixPausation();
             return;
         }
 
-        const value = 2 ** (gap / this.upperThreshold);
+        let value;
+        if (currentTime > targetTime) {
+            value = 1 - gap / this.upperThreshold;
+        } else {
+            value = 1 + gap / this.upperThreshold;
+            value = Math.min(value, 1 + gap);
+        }
         this.speedup(value);
 
-        // resume the element once computation is over
-        if (targetPaused !== this.elm.paused) {
-            if (targetPaused) {
-                this.elm.pause();
-            } else {
-                this.elm.play();
-            }
-        }
+        fixPausation();
     }
 
     getURL() {

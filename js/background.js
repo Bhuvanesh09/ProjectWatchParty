@@ -811,14 +811,15 @@ function receiveDataHandler(peerObject) {
             AppState.receiveInitInfo(message);
             break;
         case "synctime":
-            chrome.runtime.sendMessage({
-                action: "backToPopCurrentTime",
-                time: message.time,
-                totalTime: message.totalTime,
-            });
             if (appState.shouldFollow()) {
                 // eslint-disable-next-line no-undef
                 Time.receive(message, peerDelay);
+
+                chrome.runtime.sendMessage({
+                    action: "backToPopCurrentTime",
+                    time: message.time,
+                    totalTime: message.totalTime,
+                });
             }
             break;
         case Controller.REQUEST_TYPE:
