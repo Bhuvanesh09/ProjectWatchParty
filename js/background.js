@@ -1,10 +1,5 @@
 /* global firebase */
 
-// TODO: reorder functions logically
-
-// TODO: aggressively delete offer as soon as an answer is received.
-//        even if this is handled, there might be some race conditions
-
 // firebase init {{{
 let firebaseAppInited = false;
 
@@ -573,7 +568,6 @@ async function createRoom() { // {{{
     // [firestore web ui will display the document name in italics if it doesn't actually exist]
     await roomRef.set({ exists: true });
 
-    // TODO: dup [MARKER:1]
     const selfRef = await roomRef.collection("peers")
         .doc(appState.getMyName());
 
@@ -727,7 +721,6 @@ async function joinRoomById(roomId) { // {{{
         await processOffer(peer.ref);
     });
 
-    // TODO: dup [MARKER:1]
     const selfRef = await roomRef.collection("peers")
         .doc(appState.getMyName());
     advertiseOfferForPeers(selfRef);
@@ -804,7 +797,6 @@ function receiveDataHandler(peerObject) {
         }
             roundTripTime();
             break;
-            // TODO: profile picture and names go here
         case "initInfo":
             startCalculatingRTT();
             // eslint-disable-next-line no-fallthrough

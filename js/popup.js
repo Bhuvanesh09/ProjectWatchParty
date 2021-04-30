@@ -91,7 +91,6 @@ function initMessaging() {
         case "deniedController":
             document.getElementById("request-controller-status").innerText = "Request denied!";
             break;
-            // TODO: use for profile picture, roomId, etc.
         case "sessionInfo": {
             const {
                 roomId,
@@ -258,8 +257,6 @@ function joinRoom(_clickEvent) {
 function exitRoom(_clickEvent) {
     const statusElm = document.getElementById("createdRoomId");
     statusElm.innerText = "Exiting room...";
-
-    // TODO: give error if not joined any room yet
 
     chrome.runtime.sendMessage({
         action: "hangup",
