@@ -452,6 +452,16 @@ async function advertiseOfferForPeers(selfRef) { // {{{
                 dataChannel.addEventListener("message", receiveDataHandler(peerObject));
 
                 peerObject.send(appState.prepareInitInfo());
+
+                const { videoURL } = appState.roomData;
+                chrome.tabs.query({}, function (tabs) {
+                    for (const tab of tabs) {
+                        if (tab.url === videoURL) {
+                            chrome.tabs.sendMessage(tab.id, { action: "sendTimeToBg" });
+                            break;
+                        }
+                    }
+                });
             }
         };
     }());

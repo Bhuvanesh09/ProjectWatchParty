@@ -1,6 +1,7 @@
 /* global VideoController */
 
 const controller = new VideoController("yt");
+let receivedState;
 
 function forceSynchronize() {
     const data = controller.getSendInfo();
@@ -8,16 +9,32 @@ function forceSynchronize() {
     chrome.runtime.sendMessage({
         action: "sendTime",
         ...data,
-    }, function (_response) {
+    }, function (meController) {
         if (chrome.runtime.lastError) {
             console.log("This went wrong", chrome.runtime.lastError);
+        }
+
+        if (meController) {
+            // reset state when I am no longer the controller
+            // or a different video is being synced
+            receivedState = null;
         }
     });
 }
 
-setInterval(forceSynchronize, 1000);
+// setInterval(forceSynchronize, 1000);
 
 controller.setHandlers(forceSynchronize);
+
+function selfSynchronize() {
+    if (receivedState) {
+        const gotoTime = receivedState[1]
+            ? receivedState[0] : receivedState[0] + (Date.now() - receivedState[2]) / 1000;
+        controller.goto(gotoTime, receivedState[1]);
+    }
+}
+
+setInterval(selfSynchronize, 50);
 
 chrome.runtime.onMessage.addListener(function ({
     action,
@@ -26,7 +43,7 @@ chrome.runtime.onMessage.addListener(function ({
     switch (action) {
     case "recvTime":
         console.log(`Received: ${JSON.stringify(data)}`);
-        controller.goto(data.time, data.paused);
+        receivedState = [data.time, data.paused, Date.now()];
         sendResponse({ done: true });
         break;
     case "showError":
@@ -36,6 +53,9 @@ chrome.runtime.onMessage.addListener(function ({
         break;
     case "noFollow":
         controller.noFollow();
+        break;
+    case "sendTimeToBg":
+        forceSynchronize();
         break;
     default:
         console.log("Unknown message!");

@@ -7,10 +7,6 @@ class Time {
             totalTime,
         } = data;
 
-        if (!appState.shouldSendToPeers(url)) {
-            return false;
-        }
-
         sendData({
             url,
             paused,
@@ -19,7 +15,9 @@ class Time {
             action: "synctime",
         })
             .then(() => {
-                callback("success");
+                if (callback) {
+                    callback("success");
+                }
             });
     }
 
@@ -39,6 +37,8 @@ class Time {
     }
 
     static async receive(data, delay) {
+        console.log("Got", data, delay);
+
         const message = {
                 action: "recvTime",
                 time: data.time + (data.paused ? 0 : delay / 1000),
@@ -93,11 +93,16 @@ chrome.runtime.onMessage.addListener(function ({
     }
 
     switch (action) {
-    case "sendTime":
-        Time.send(data, (res) => {
-            sendResponse(res);
-        });
-        return true;
+    case "sendTime": {
+        const { url } = data;
+        if (!appState.shouldSendToPeers(url)) {
+            sendResponse(false);
+        } else {
+            Time.send(data);
+            sendResponse(true);
+        }
+    }
+        break;
     case "textMessageSending": {
         const stringMessage = data.messageString;
         addToHistory("self", stringMessage);
