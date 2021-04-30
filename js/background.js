@@ -815,7 +815,7 @@ function receiveDataHandler(peerObject) {
             if (appState.shouldFollow()) {
                 // eslint-disable-next-line no-undef
                 Time.receive(message, peerDelay);
-
+            } else {
                 chrome.runtime.sendMessage({
                     action: "backToPopCurrentTime",
                     time: message.time,
@@ -923,6 +923,6 @@ chrome.notifications.onClicked.addListener(() => {
 
 setInterval(() => {
     appState.sendSessionInfoPopup();
-}, 1000);
+}, 400);
 
 // vim: fdm=marker ts=4 sts=4 sw=4

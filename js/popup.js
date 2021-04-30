@@ -49,8 +49,6 @@ function modifyDisplayOnState() {
         }
 
         if (document.getElementById("usernameInput").value === currentControllerGlobal) {
-            $("#passControllerToOthers")
-                .removeClass("hide");
             $("#request-controller")
                 .addClass("hide");
             $("#myRequestStatus")
@@ -60,8 +58,6 @@ function modifyDisplayOnState() {
             $("#request-controller-status")
                 .addClass("hide");
         } else {
-            $("#passControllerToOthers")
-                .addClass("hide");
             $("#request-controller")
                 .removeClass("hide");
             $("#toggle-follow-btn")
@@ -328,6 +324,16 @@ let displayRequestController,
                     peerName,
                 });
             };
+        }
+
+        if (peerRequestIncomingNames.length === 0) {
+            document.getElementById("passControllerToOthers")
+                .classList
+                .add("hide");
+        } else {
+            document.getElementById("passControllerToOthers")
+                .classList
+                .remove("hide");
         }
 
         for (const peerName of peerRequestIncomingNames) {
