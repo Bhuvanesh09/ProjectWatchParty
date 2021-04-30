@@ -2,8 +2,15 @@
 
 const controller = new VideoController("yt");
 
+let lastSynced = Date.now();
+
 function forceSynchronize() {
     const data = controller.getSendInfo();
+
+    // remove orange border if not followed for 2000 seconds
+    if (Date.now() - lastSynced > 2000) {
+        controller.elm.classList.remove(VideoController.TRACK_CLASS);
+    }
 
     chrome.runtime.sendMessage({
         action: "sendTime",
@@ -25,6 +32,7 @@ chrome.runtime.onMessage.addListener(function ({
 }, _sender, sendResponse) {
     switch (action) {
     case "recvTime":
+        lastSynced = Date.now();
         console.log(`Received: ${JSON.stringify(data)}`);
         controller.goto(data.time, data.paused);
         sendResponse({ done: true });
