@@ -358,12 +358,13 @@ but not found in peer list`);
         appState.notifyOfCurrentController();
         Controller.notifyOfRequestList();
 
-        chrome.runtime.sendMessage({
+        const dataSend = {
             action: "sessionInfo",
             state: this.state,
             roomId: this.getRoomId(),
             url: this.roomData.videoURL,
-        });
+        };
+        chrome.runtime.sendMessage(dataSend);
     }
 
     followToggle(callback) {
