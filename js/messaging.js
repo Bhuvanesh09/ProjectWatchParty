@@ -1,12 +1,29 @@
 class Time {
-    static async send(data) {
+    static async send(data, callback) {
+        const {
+            url,
+            paused,
+            time,
+            totalTime,
+        } = data;
+
+        if (!appState.shouldSendToPeers(url)) {
+            return false;
+        }
+
         sendData({
-            ...data,
+            url,
+            paused,
+            time,
+            totalTime,
             action: "synctime",
-        });
+        })
+            .then(() => {
+                callback("success");
+            });
     }
 
-    static async tellNoFollow(data) {
+    static tellNoFollow(data) {
         const message = {
                 action: "noFollow",
             },
@@ -24,7 +41,7 @@ class Time {
     static async receive(data, delay) {
         const message = {
                 action: "recvTime",
-                time: data.time + delay / 1000,
+                time: data.time + (data.paused ? 0 : delay / 1000),
                 paused: data.paused,
             },
             { url } = data;
@@ -76,28 +93,10 @@ chrome.runtime.onMessage.addListener(function ({
     }
 
     switch (action) {
-    case "sendTime": {
-        const {
-            url,
-            paused,
-            time,
-            totalTime,
-        } = data;
-
-        if (!appState.shouldSendToPeers(url)) {
-            return false;
-        }
-
-        Time.send({
-            url,
-            paused,
-            time,
-            totalTime,
-        })
-            .then(() => {
-                sendResponse("success");
-            });
-    }
+    case "sendTime":
+        Time.send(data, (res) => {
+            sendResponse(res);
+        });
         return true;
     case "textMessageSending": {
         const stringMessage = data.messageString;

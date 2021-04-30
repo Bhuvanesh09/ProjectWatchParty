@@ -29,6 +29,8 @@ function initFirebaseApp() {
     */
 
     firebaseAppInited = true;
+
+    resetAppStateOnDisconnect();
 }
 
 // }}}
@@ -356,12 +358,13 @@ but not found in peer list`);
         appState.notifyOfCurrentController();
         Controller.notifyOfRequestList();
 
-        chrome.runtime.sendMessage({
+        const dataSend = {
             action: "sessionInfo",
             state: this.state,
             roomId: this.getRoomId(),
             url: this.roomData.videoURL,
-        });
+        };
+        chrome.runtime.sendMessage(dataSend);
     }
 
     followToggle(callback) {
@@ -390,18 +393,18 @@ but not found in peer list`);
 appState = new AppState();
 
 function resetAppStateOnDisconnect() {
-    firebase.firestore().collection("connectivity").onSnapshot({
-        includeMetadataChanges: true,
-    }, (snapshot) => {
-        if (snapshot.metadata.fromCache) {
-            // definitely offline if this is true
-            // reset appState
-            appState = new AppState();
-        }
-    });
+    firebase.firestore()
+        .collection("connectivity")
+        .onSnapshot({
+            includeMetadataChanges: true,
+        }, (snapshot) => {
+            if (snapshot.metadata.fromCache) {
+                // definitely offline if this is true
+                // reset appState
+                appState = new AppState();
+            }
+        });
 }
-
-resetAppStateOnDisconnect();
 
 function iceCandidateCollector(peerConnection, candidateCollection) {
     let iceCandidateSendCount = 0;
@@ -809,14 +812,15 @@ function receiveDataHandler(peerObject) {
             AppState.receiveInitInfo(message);
             break;
         case "synctime":
-            chrome.runtime.sendMessage({
-                action: "backToPopCurrentTime",
-                time: message.time,
-                totalTime: message.totalTime,
-            });
             if (appState.shouldFollow()) {
                 // eslint-disable-next-line no-undef
                 Time.receive(message, peerDelay);
+
+                chrome.runtime.sendMessage({
+                    action: "backToPopCurrentTime",
+                    time: message.time,
+                    totalTime: message.totalTime,
+                });
             }
             break;
         case Controller.REQUEST_TYPE:
@@ -870,6 +874,21 @@ function populateChatWindow() {
 function receivedTextMessage(message, remoteName) {
     console.log(`${message} from ${remoteName}`);
 
+    chrome.notifications.create(appState.roomData.messageHistory.length.toString(), {
+        message,
+        title: `New Watch Party Message from ${remoteName}!`,
+        type: "basic",
+        iconUrl: "/images/get_started16.png",
+    });
+
+    chrome.browserAction.getBadgeText({}, function (text) {
+        if (text === "") {
+            chrome.browserAction.setBadgeText({ text: "1" });
+        } else {
+            chrome.browserAction.setBadgeText({ text: (1 + Number.parseInt(text, 10)).toString() });
+        }
+    });
+
     chrome.runtime.sendMessage({
         action: "textMessageReceiving",
         senderName: remoteName,
@@ -893,8 +912,17 @@ chrome.contextMenus.create({
     title: "Sync this video",
 });
 
+chrome.notifications.onClicked.addListener(() => {
+    chrome.windows.create({
+        url: chrome.runtime.getURL("../html/chat.html"),
+        type: "popup",
+    });
+});
+
 // SENDING THE CURRENT STATE EACH SECOND
 
-setInterval(() => { appState.sendSessionInfoPopup(); }, 1000);
+setInterval(() => {
+    appState.sendSessionInfoPopup();
+}, 1000);
 
 // vim: fdm=marker ts=4 sts=4 sw=4

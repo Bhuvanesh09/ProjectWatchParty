@@ -67,3 +67,9 @@ const hashStringToNum = (s) => s.split("")
     };
 
 setTimeout(changeMainDp, 5);
+
+setInterval(() => {
+    if (window.document.hasFocus()) {
+        chrome.browserAction.setBadgeText({ text: "" }); // clear
+    }
+}, 500);

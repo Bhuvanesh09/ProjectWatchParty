@@ -10,7 +10,11 @@
   "content_scripts": [
     {
       "matches": [
-        "https://*.youtube.com/watch*"
+        "https://*.youtube.com/watch*",
+        "https://*.vimeo.com/*",
+        "https://*.microsoftstream.com/video",
+        "https://*.dailymotion.com/video*",
+        "https://*.twitch.tv/videos*"
       ],
       "js": [
         "js/sweetalert.min.js",
@@ -25,7 +29,8 @@
   "permissions": [
     "storage",
     "tabs",
-    "contextMenus"
+    "contextMenus",
+    "notifications"
   ],
   "browser_action": {
     "default_popup": "html/popup.html",

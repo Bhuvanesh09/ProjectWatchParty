@@ -22,6 +22,10 @@ function modifyDisplayOnState() {
             .addClass("hide");
         $("#syncBar")
             .addClass("hide");
+        $("#joinSession")
+            .removeClass("hide");
+
+        document.getElementById("roomInfoValue").innerHTML = "No room yet";
     } else {
         document.getElementById("roomInfoValue").innerHTML = ROOMID;
         $("#joinSession")
@@ -43,30 +47,30 @@ function modifyDisplayOnState() {
             $("#syncBar")
                 .removeClass("hide");
         }
-    }
 
-    if (document.getElementById("usernameInput").value === currentControllerGlobal) {
-        $("#passControllerToOthers")
-            .removeClass("hide");
-        $("#request-controller")
-            .addClass("hide");
-        $("#myRequestStatus")
-            .addClass("hide");
-        $("#toggle-follow-btn")
-            .addClass("hide");
-        $("#request-controller-status")
-            .addClass("hide");
-    } else {
-        $("#passControllerToOthers")
-            .addClass("hide");
-        $("#request-controller")
-            .removeClass("hide");
-        $("#toggle-follow-btn")
-            .removeClass("hide");
-        $("#myRequestStatus")
-            .removeClass("hide");
-        $("#request-controller-status")
-            .removeClass("hide");
+        if (document.getElementById("usernameInput").value === currentControllerGlobal) {
+            $("#passControllerToOthers")
+                .removeClass("hide");
+            $("#request-controller")
+                .addClass("hide");
+            $("#myRequestStatus")
+                .addClass("hide");
+            $("#toggle-follow-btn")
+                .addClass("hide");
+            $("#request-controller-status")
+                .addClass("hide");
+        } else {
+            $("#passControllerToOthers")
+                .addClass("hide");
+            $("#request-controller")
+                .removeClass("hide");
+            $("#toggle-follow-btn")
+                .removeClass("hide");
+            $("#myRequestStatus")
+                .removeClass("hide");
+            $("#request-controller-status")
+                .removeClass("hide");
+        }
     }
 }
 
@@ -93,7 +97,6 @@ function initMessaging() {
             break;
             // TODO: use for profile picture, roomId, etc.
         case "sessionInfo": {
-            // @bhuvanesh
             const {
                 roomId,
                 state,
@@ -291,8 +294,12 @@ function formatFromSeconds(time) {
 }
 
 function updateProgressBar(time, totalTime) {
-    if (time == null) {
+    if (!time) {
         time = 0;
+    }
+
+    if (!totalTime) {
+        totalTime = 0;
     }
 
     const perc = (parseFloat(time) * 100) / parseFloat(totalTime);
