@@ -1,5 +1,9 @@
 # YouTube Watch Party
 
+## Demo video
+
+[YouTube link](https://www.youtube.com/watch?v=w8CgKDZDU1Y)/[Piped link](https://piped.kavin.rocks/watch?v=w8CgKDZDU1Y)
+
 ## Installation
 
 Coming soon on Firefox and Chrome web stores!
